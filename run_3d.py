@@ -1,5 +1,5 @@
 import cosserat_model_3d
-import solution_poromechanics
+#import solution_poromechanics
 from porepy.applications.convergence_analysis import ConvergenceAnalysis
 from collections import namedtuple
 import porepy as pp
@@ -203,7 +203,7 @@ fontsize_label = 20
 fontsize_ticks = 18
 fontsize_legend = 16
 
-refinement_levels = 4
+refinement_levels = 1
 
 elasticity_filename_stem = "elasticity_3d"
 

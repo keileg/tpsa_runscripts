@@ -1351,7 +1351,7 @@ class SourceTerms:
 
 
 class BoundaryConditions(
-    pp.momentum_balance.BoundaryConditionsThreeFieldMomentumBalance
+    pp.momentum_balance.BoundaryConditionsMomentumBalance
 ):
 
     def bc_values_displacement(
@@ -2106,7 +2106,7 @@ class EquationsMechanicsRealStokes:
 
 class EquationsPoromechanics(
     pp.fluid_mass_balance.MassBalanceEquations,
-    pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
+    #pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
 ):
     """Combines mass and momentum balance equations."""
 
@@ -2119,23 +2119,6 @@ class EquationsPoromechanics(
         pp.fluid_mass_balance.MassBalanceEquations.set_equations(self)
         pp.momentum_balance.ThreeFieldMomentumBalanceEquations.set_equations(self)
 
-    def solid_mass_equation(self, subdomains):
-        eq = super().solid_mass_equation(subdomains)
-
-        factor = self._biot_coefficient_inv_lambda(subdomains)
-        full_eq = eq - self.volume_integral(
-            factor * self.pressure(subdomains), subdomains, dim=1
-        )
-        full_eq.set_name("solid_mass_equation")
-        return full_eq
-
-    def _biot_coefficient_inv_lambda(self, subdomains):
-        stiffness = self.stiffness_tensor(subdomains[0])
-
-        inv_lmbda = pp.ad.DenseArray(1 / stiffness.lmbda)
-        # Conservation of solid mass
-        factor = self.biot_coefficient(subdomains) * inv_lmbda
-        return factor
 
     def mass_balance_equation(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Mass balance equation for subdomains.
@@ -2196,7 +2179,7 @@ class EquationsPoromechanics(
 
 
 class ConstitutiveLawsPoromechanics(
-    pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
+#    pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
     pp.poromechanics.ConstitutiveLawsPoromechanics,
 ):
     def darcy_flux_discretization(self, subdomains: list[pp.Grid]) -> pp.ad.MpfaAd:
@@ -2234,30 +2217,17 @@ class ConstitutiveLawsPoromechanics(
         return self.mechanical_stress(subdomains)
 
 
-class VariablesThreeFieldPoromechanics(
-    pp.momentum_balance.VariablesThreeFieldMomentumBalance,
-    pp.fluid_mass_balance.VariablesSinglePhaseFlow,
-):
-    def create_variables(self):
-        """Set the variables for the poromechanics problem.
-
-        Call both parent classes' set_variables methods.
-
-        """
-        pp.fluid_mass_balance.VariablesSinglePhaseFlow.create_variables(self)
-        pp.momentum_balance.VariablesThreeFieldMomentumBalance.create_variables(self)
-
-
 class SetupTpsa(  # type: ignore[misc]
     UnitCubeGrid,
     SourceTerms,
     MBSolutionStrategy,
     DataSaving,
     EquationsMechanicsRealStokes,
-    pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
-    pp.momentum_balance.VariablesThreeFieldMomentumBalance,
-    pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
-    pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
+    #pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
+    #pp.momentum_balance.VariablesThreeFieldMomentumBalance,
+    #pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
+    #pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
+    pp.momentum_balance.TpsaMomentumBalanceMixin,
     BoundaryConditions,
     pp.momentum_balance.MomentumBalance,
 ):
@@ -2269,14 +2239,15 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
     SourceTerms,
     BoundaryConditions,
     SolutionStrategyPoromech,
+    pp.momentum_balance.TpsaMomentumBalanceMixin,
     DataSaving,
-    EquationsPoromechanics,
-    ConstitutiveLawsPoromechanics,
-    VariablesThreeFieldPoromechanics,
+    #EquationsPoromechanics,
+    #VariablesThreeFieldPoromechanics,
     # pp.momentum_balance.ConstitutiveLawsMomentumBalance,
-    pp.momentum_balance.VariablesThreeFieldMomentumBalance,
-    pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
-    pp.poromechanics.BoundaryConditionsPoromechanics,
+    #pp.momentum_balance.VariablesThreeFieldMomentumBalance,
+    #pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
+    #pp.poromechanics.BoundaryConditionsPoromechanics,
+    pp.poromechanics.Poromechanics,
 ):
     pass
 
