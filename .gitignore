@@ -1,0 +1,12 @@
+*.vtu
+*.pkl
+*.png
+*.msh
+*.pvd
+*.jpg
+*.zip
+*.pyc
+*.geo
+*.pvsm
+*.geo_unrolled
+*.npy
