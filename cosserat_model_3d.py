@@ -134,7 +134,11 @@ class DataSaving(VerificationDataSaving):
             has_fluid = False
 
         stiffness = mech_data["fourth_order_tensor"]
-        cosserat_parameter = mech_data["cosserat_parameter"]
+        
+        try:
+            cosserat_parameter = mech_data["cosserat_parameter"]
+        except KeyError:
+            cosserat_parameter = np.zeros(grid.num_cells)
 
         mu = stiffness.mu
         lmbda = stiffness.lmbda
@@ -1694,10 +1698,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             iterate_index=0,
         )
 
-    def after_nonlinear_convergence(self, iteration_counter: int) -> None:
-        """Collect results."""
-        super().after_nonlinear_convergence(iteration_counter)
-
     def set_discretization_parameters(self) -> None:
         """Set parameters for the subproblems and the combined problem.
 
@@ -1748,9 +1748,11 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
             # Cosserat parameter
             cosserat_parameter = evaluate(self.exact_sol.cosserat_parameter_function)
-            data[pp.PARAMETERS][self.stress_keyword][
-                "cosserat_parameter"
-            ] = cosserat_parameter
+            if np.any(cosserat_parameter) > 0:
+                data[pp.PARAMETERS][self.stress_keyword][
+                    "cosserat_parameter"
+                ] = cosserat_parameter
+
 
 
 class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
@@ -2069,9 +2071,10 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
 
             # Cosserat parameter
             cosserat_parameter = evaluate(self.exact_sol.cosserat_parameter_function)
-            data[pp.PARAMETERS][self.stress_keyword][
-                "cosserat_parameter"
-            ] = cosserat_parameter
+            if np.any(cosserat_parameter) > 0:
+                data[pp.PARAMETERS][self.stress_keyword][
+                    "cosserat_parameter"
+                ] = cosserat_parameter
 
 
 class EquationsMechanicsRealStokes:
