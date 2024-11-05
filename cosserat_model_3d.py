@@ -67,11 +67,11 @@ class DataSaving(VerificationDataSaving):
             )
             collected_data[field.name] = (error, ref_norm)
 
-        exporter = pp.Exporter(self.mdg, file_name=f"results_{sd.num_cells}_cells")
-        exporter.write_vtu(export_data)
+        #exporter = pp.Exporter(self.mdg, file_name=f"results_{sd.num_cells}_cells")
+        #exporter.write_vtu(export_data)
 
         collected_data["time"] = t
-        collected_data["cell_diameter"] = sd.cell_diameters().min()
+        collected_data["cell_diameter"] = sd.cell_diameters(cell_wise=False, func=np.min)
 
         # Convert to dataclass, big thanks to https://stackoverflow.com/a/77325321
         return make_dataclass(
@@ -957,7 +957,7 @@ class UnitCubeGrid(pp.ModelGeometry):
 
         sd = self.mdg.subdomains()[0]
         x, y, z = sd.nodes[0], sd.nodes[1], sd.nodes[2]
-        h = np.min(sd.cell_diameters())
+        h = sd.cell_diameters(cell_wise=False, func=np.min)
 
         pert_rate = self.params.get("perturbation", 0.0)
         if self.params.get("h2_perturbation", False):
@@ -1439,7 +1439,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             self.fields.append(Field("rotation", params["nd"] == 2, True, True))
             self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
 
-        self.linear_solver = "iterative"
 
     def solve_linear_system(self) -> np.ndarray:
         """Solve linear system.
@@ -1645,7 +1644,16 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             see linear_solve.
 
         """
-        self.linear_solver = "iterative"
+        self.linear_solver = "direct"
+
+    def initialize_data_saving(self) -> None:
+        # Something is wrong with numba compilation in the exporter. For now, we drop
+        # this step.
+        pass
+
+    def _save_data_time_step(self) -> None:
+        """No saving of data"""
+        #pass
 
     def before_nonlinear_loop(self) -> None:
         """Update values of external sources."""
