@@ -258,7 +258,7 @@ class ExactSolution:
                 )
                 # The displacement is the curl of pot
                 u = [
-                    sym.diff(pot, y) - sym.diff(pot, z) + x,
+                    sym.diff(pot, y) - sym.diff(pot, z),
                     sym.diff(pot, z) - sym.diff(pot, x),
                     sym.diff(pot, x) - sym.diff(pot, y),
                 ]
@@ -360,7 +360,7 @@ class ExactSolution:
 
         grad_rot = [[sym.diff(rot[i], var) for var in all_vars] for i in range(rot_dim)]
         couple_stress = [
-            [2 * cosserat_parameter * grad_rot[i][j] for j in range(self.nd)]
+            [2 * cosserat_parameter * lame_mu * grad_rot[i][j] for j in range(self.nd)]
             for i in range(len(rot))
         ]
 
@@ -370,19 +370,19 @@ class ExactSolution:
                 lame_lmbda * solid_p
                 + 2 * lame_mu * grad_u[0][0]
                 - biot_coefficient * fluid_p,
-                lame_mu * (2 * grad_u[0][1] - rot[2]),
-                lame_mu * (2 * grad_u[0][2] + rot[1]),
+                2 * lame_mu * (grad_u[0][1] - rot[2]),
+                2 * lame_mu * (grad_u[0][2] + rot[1]),
             ],
             [
-                lame_mu * (2 * grad_u[1][0] + rot[2]),
+                2 * lame_mu * (grad_u[1][0] + rot[2]),
                 lame_lmbda * solid_p
                 + 2 * lame_mu * grad_u[1][1]
                 - biot_coefficient * fluid_p,
-                lame_mu * (2 * grad_u[1][2] - rot[0]),
+                2 * lame_mu * (grad_u[1][2] - rot[0]),
             ],
             [
-                lame_mu * (2 * grad_u[2][0] - rot[1]),
-                lame_mu * (2 * grad_u[2][1] + rot[0]),
+                2 * lame_mu * (grad_u[2][0] - rot[1]),
+                2 * lame_mu * (grad_u[2][1] + rot[0]),
                 lame_lmbda * solid_p
                 + 2 * lame_mu * grad_u[2][2]
                 - biot_coefficient * fluid_p,
@@ -414,7 +414,7 @@ class ExactSolution:
             sigma_total[1][0] - sigma_total[0][1],
         ]
         source_rot = [
-            (div_couple_stress[i] - stress_asymmetry[i] / lame_mu) / 2
+            div_couple_stress[i] - stress_asymmetry[i]
             for i in range(self.nd)
         ]
 
@@ -2233,7 +2233,7 @@ class SetupTpsa(  # type: ignore[misc]
     SourceTerms,
     MBSolutionStrategy,
     DataSaving,
-    EquationsMechanicsRealStokes,
+    #EquationsMechanicsRealStokes,
     #pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
     #pp.momentum_balance.VariablesThreeFieldMomentumBalance,
     #pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
@@ -2262,18 +2262,3 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
 ):
     pass
 
-
-class _SetupMpsa(  # type: ignore[misc]
-    UnitCubeGrid,
-    SourceTerms,
-    MBSolutionStrategy,
-    DataSaving,
-    # pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
-    # pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
-    # pp.momentum_balance.ConstitutiveLawsMomentumBalance,
-    # pp.momentum_balance.VariablesThreeFieldMomentumBalance,
-    # pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
-    BoundaryConditions,
-    pp.momentum_balance.MomentumBalance,
-):
-    pass

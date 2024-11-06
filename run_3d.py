@@ -203,7 +203,7 @@ fontsize_label = 20
 fontsize_ticks = 18
 fontsize_legend = 16
 
-refinement_levels = 1
+refinement_levels = 2
 
 elasticity_filename_stem = "elasticity_3d"
 
@@ -221,7 +221,7 @@ if run_elasticity:
             "grid_type": grid_types[i],
             "refinement_levels": refinement_levels,
             "cosserat_parameters": [0],
-            "lame_lambdas": [1, 1e2],
+            "lame_lambdas": [1],
             "perturbation": perturbations[i],
             "h2_perturbation": h2_perturbations[i],
             "nd": 3,
