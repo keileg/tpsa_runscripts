@@ -218,14 +218,14 @@ class ExactSolution:
         heterogeneity: float = setup.params.get("heterogeneity")
 
         # Lamé parameters
-        lame_lmbda_base = setup.solid.lame_lambda()
-        lame_mu_base = setup.solid.shear_modulus()
-        biot_coefficient = setup.solid.biot_coefficient()
-        permeability = setup.solid.permeability()
-        porosity = setup.solid.porosity()
+        lame_lmbda_base = setup.solid.lame_lambda
+        lame_mu_base = setup.solid.shear_modulus
+        biot_coefficient = setup.solid.biot_coefficient
+        permeability = setup.solid.permeability
+        porosity = setup.solid.porosity
 
         try:
-            fluid_compressibility = setup.fluid.compressibility()
+            fluid_compressibility = setup.fluid.reference_component.compressibility
         except KeyError:
             fluid_compressibility = 0.0
 

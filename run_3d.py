@@ -38,8 +38,8 @@ def run_convergence_analysis(
     for loc_cos in cosserat_parameters:
         cos_results = []
         for lambda_param in lame_lambdas:
-            solid = pp.SolidConstants({"lame_lambda": lambda_param,
-            "biot_coefficient": 0})
+            solid = pp.SolidConstants(lame_lambda= lambda_param,
+            biot_coefficient=0)
 
             conv_analysis = ConvergenceAnalysis(
                 model_class=cosserat_model_3d.SetupTpsa,
