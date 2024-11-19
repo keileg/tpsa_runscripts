@@ -1738,19 +1738,15 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             iterate_index=0,
         )
 
-        rot = self.exact_sol.rotation(sd, 0, cc=False).reshape((sd.dim, -1), order="f")
-        if isinstance(rot, (float, int)):
-            rot = rot * np.ones(sd.dim, sd.num_faces)
-        elif rot.shape[1] == 1:
-            rot = rot * np.ones(sd.num_faces)
-        tmp = np.zeros((3, sd.num_faces))
-        tmp[:, boundary_faces] = rot[:, boundary_faces]
-        pp.set_solution_values(
-            name="bc_values_rotation",
-            values=tmp.ravel("F"),
-            data=data,
-            iterate_index=0,
-        )
+
+    def initialize_data_saving(self) -> None:
+        # Something is wrong with numba compilation in the exporter. For now, we drop
+        # this step.
+        pass
+
+    def _save_data_time_step(self) -> None:
+        """No saving of data"""
+        #pass        
 
     def solve_linear_system(self) -> np.ndarray:
         """Solve linear system.
@@ -2119,7 +2115,7 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
     SourceTerms,
     BoundaryConditions,
     SolutionStrategyPoromech,
-    pp.momentum_balance.TpsaMomentumBalanceMixin,
+    pp.poromechanics.TpsaPoromechanicsMixin,
     DataSaving,
     #EquationsPoromechanics,
     #VariablesThreeFieldPoromechanics,
