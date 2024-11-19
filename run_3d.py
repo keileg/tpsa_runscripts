@@ -1,4 +1,4 @@
-import cosserat_model_3d
+import model_3d
 #import solution_poromechanics
 from porepy.applications.convergence_analysis import ConvergenceAnalysis
 from collections import namedtuple
@@ -42,7 +42,7 @@ def run_convergence_analysis(
             biot_coefficient=0)
 
             conv_analysis = ConvergenceAnalysis(
-                model_class=cosserat_model_3d.SetupTpsa,
+                model_class=model_3d.SetupTpsa,
                 model_params={
                     "grid_type": grid_type,
                     "meshing_arguments": {"cell_size": 0.25},
@@ -99,7 +99,7 @@ def run_poromech_convergence_analysis(
             fluid = pp.FluidConstants({"pressure": 0,
                                         "compressibility": 0.01})
             conv_analysis = ConvergenceAnalysis(
-                model_class=cosserat_model_3d.SetupTpsaPoromechanics,
+                model_class=model_3d.SetupTpsaPoromechanics,
                 model_params={
                     "grid_type": grid_type,
                     "meshing_arguments": {"cell_size": 0.25},
@@ -190,25 +190,25 @@ def plot_and_save(ax,legend_handles, file_name, y_label):
     plt.savefig(f"{file_name}.png", bbox_inches="tight", pad_inches=0)    
 
 
-run_elasticity = True
-plot_elasticity = True
+run_elasticity = False
+plot_elasticity = False
 
 run_cosserat = False
 plot_cosserat = False
 
-run_poromechanics = False
-plot_poromechanics = False
+run_poromechanics = True
+plot_poromechanics = True
 
 fontsize_label = 20
 fontsize_ticks = 18
 fontsize_legend = 16
 
-refinement_levels = 2
+refinement_levels = 4
 
 elasticity_filename_stem = "elasticity_3d"
 
-grid_types = ["cartesian", "cartesian", "cartesian", "simplex"]
 grid_types = ['cartesian']
+grid_types = ["cartesian", "cartesian", "cartesian", "simplex"]
 perturbations = [0.0, 0.3, 0.3, 0]
 h2_perturbations = [False, False, True, False]
 circumcenter = [False, False, False, True]
@@ -221,7 +221,7 @@ if run_elasticity:
             "grid_type": grid_types[i],
             "refinement_levels": refinement_levels,
             "cosserat_parameters": [0],
-            "lame_lambdas": [1],
+            "lame_lambdas": [1, 1e2, 1e4, 1e10],
             "perturbation": perturbations[i],
             "h2_perturbation": h2_perturbations[i],
             "nd": 3,
@@ -298,7 +298,7 @@ if plot_elasticity:
             for row in range(arr.shape[0] - 1):
                 print(f"{np.log2(arr[row] / arr[row + 1])}")
             print(' ')
-            arr = np.asarray(all_errors)
+            #arr = np.asarray(all_errors)
             print(np.log2(arr[:-1] / arr[1:]))
             print('')
         
@@ -341,7 +341,7 @@ h2_perturbations = [False, False, True, False]
 circumcenter = [False, False, False, True]
 extrusion = [False, False, False, True]
 lame_lambdas = [1]
-if run_cosserat:
+if False:
     #
     for i in range(len(grid_types)):
         params = {
@@ -367,7 +367,7 @@ if run_cosserat:
         with open(filename, "wb") as f:
             pickle.dump([cosserat_results, params], f)
 
-if plot_cosserat:
+if False:
     for grid_ind in range(len(grid_types)):
         full_stem = f"{cosserat_filename_stem}_{grid_types[grid_ind]}_pert_{perturbations[grid_ind]}_h2_{h2_perturbations[grid_ind]}_circumcenter_{circumcenter[grid_ind]}_extrusion_{extrusion[grid_ind]}"
         filename = f"{full_stem}.pkl"
