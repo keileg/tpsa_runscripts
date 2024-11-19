@@ -93,11 +93,11 @@ def run_poromech_convergence_analysis(
         cos_results = []
 
         for perm in permeabilities:
-            solid = pp.SolidConstants({"lame_lambda": lambda_param,
-                                      "permeability": perm,
-                                      "biot_coefficient": 1})
-            fluid = pp.FluidConstants({"pressure": 0,
-                                        "compressibility": 0.01})
+            solid = pp.SolidConstants(lame_lambda=lambda_param,
+                                      permeability=perm,
+                                      biot_coefficient=1)
+            fluid = pp.FluidComponent(compressibility=0.01)
+            reference_values = pp.ReferenceVariableValues(pressure=0)
             conv_analysis = ConvergenceAnalysis(
                 model_class=model_3d.SetupTpsaPoromechanics,
                 model_params={
@@ -107,7 +107,8 @@ def run_poromech_convergence_analysis(
                     "h2_perturbation": h2_perturbation,
                     "heterogeneity": 1.0,
                     "cosserat_parameter": cos_param,
-                    "material_constants": {"solid": solid, "fluid": fluid},
+                    "material_constants": {"solid": solid, "fluid": fluid,
+                                           "reference_variable_values": reference_values},
                     "nd": 3,
                     "analytical_solution":analytical_solution,
                     "use_circumcenter": use_circumcenter,
