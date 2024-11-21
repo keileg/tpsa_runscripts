@@ -165,7 +165,8 @@ class DataSaving(VerificationDataSaving):
 
             fi, ci, sgn = sps.find(grid.cell_faces)
             fc_cc = grid.face_centers[::, fi] - grid.cell_centers[::, ci]
-            dist_fc_cc = np.sqrt(np.sum(fc_cc**2, axis=0))
+            n = grid.face_normals[::, fi] / g.face_areas[fi]
+            dist_fc_cc = np.abs(np.sum(fc_cc * n, axis=0))
 
             def facewise_harmonic_mean(field):
                 return 1 / np.bincount(
