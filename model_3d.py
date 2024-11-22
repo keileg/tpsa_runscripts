@@ -291,7 +291,7 @@ class ExactSolution:
                 solid_p = (
                     sym.sin(2 * pi * x) * sym.sin(2 * pi * y) * sym.sin(2 * pi * z)
                 )
-                fluid_p = u[0] * 0
+                fluid_p = u[0]
 
             case _:
                 raise NotImplementedError("Unknown analytical solution")
@@ -1702,7 +1702,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             data=data,
             iterate_index=0,
         )
-
+        
         fluid_pressure_source = self.exact_sol.fluid_pressure_source(sd=sd, time=t)
         pp.set_solution_values(
             name="source_fluid_pressure",
@@ -1878,7 +1878,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             see linear_solve.
 
         """
-        self.linear_solver = "iterative"
+        self.linear_solver = "direct"
 
     def set_discretization_parameters(self) -> None:
         """Set parameters for the subproblems and the combined problem.
@@ -1912,28 +1912,6 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
             data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = stiffness
             data[pp.PARAMETERS][self.darcy_keyword]["mpfa_inverter"] = "python"
-            dim = 1 if self.nd == 2 else 3
-
-            pp.set_solution_values(
-                name="inv_mu",
-                values=1.0 / np.repeat(lame_mu, dim),
-                data=data,
-                iterate_index=0,
-            )
-
-            pp.set_solution_values(
-                name="inv_lambda",
-                values=1.0 / np.repeat(lame_lmbda, 1),
-                data=data,
-                iterate_index=0,
-            )
-
-            # Cosserat parameter
-            cosserat_parameter = evaluate(self.exact_sol.cosserat_parameter_function)
-            if np.any(cosserat_parameter) > 0:
-                data[pp.PARAMETERS][self.stress_keyword][
-                    "cosserat_parameter"
-                ] = cosserat_parameter
 
     def _is_time_dependent(self):
         return False
@@ -1941,37 +1919,6 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
     def _is_nonlinear_problem(self) -> bool:
         """The problem is linear."""
         return False
-
-
-class EquationsMechanicsRealStokes:
-    def solid_mass_equation(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-
-        discr = self.stress_discretization(subdomains)
-        inv_lmbda = self.inv_lambda(subdomains)
-        div_mass = pp.ad.Divergence(subdomains, 1)
-
-        assert len(subdomains) == 1
-        bc_displacement = discr.bound_mass_displacement() @ self.bc_values_displacement(
-            subdomains[0]
-        )
-
-        # Conservation of solid mass
-        total_pressure = self.total_pressure(subdomains)
-        solid_mass = div_mass @ (
-            discr.mass_displacement() @ self.displacement(subdomains)
-            + discr.mass_total_pressure() @ total_pressure
-            + bc_displacement
-        ) - self.source_total_pressure(subdomains)
-
-        if self.solid.lame_lambda() < 1e18:
-            # Only add the pressure term for reasonable values of lambda, above the
-            # threshold of 1e8, we turn this into a Stokes discretization.
-            solid_mass = solid_mass - self.volume_integral(
-                inv_lmbda * total_pressure, subdomains, dim=1
-            )
-
-        solid_mass.set_name("solid_mass_equation")
-        return solid_mass
 
 
 class EquationsPoromechanics:
