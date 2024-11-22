@@ -42,25 +42,32 @@ class DataSaving(VerificationDataSaving):
                 is_cc=field.is_cc,
                 relative=field.relative,
             )
-            if field.name == 'couple_stress' and sd.num_cells > 20 and False:
-                g = pp.CartGrid([sd.cart_dims[0]+1, sd.cart_dims[1]])
-                pp.plot_grid(g, cell_value=approx_value[:g.num_cells])
-                pp.plot_grid(g, cell_value=exact_value[:g.num_cells])
-                pp.plot_grid(g, cell_value=approx_value[:g.num_cells]-exact_value[:g.num_cells])
+            if field.name == "couple_stress" and sd.num_cells > 20 and False:
+                g = pp.CartGrid([sd.cart_dims[0] + 1, sd.cart_dims[1]])
+                pp.plot_grid(g, cell_value=approx_value[: g.num_cells])
+                pp.plot_grid(g, cell_value=exact_value[: g.num_cells])
+                pp.plot_grid(
+                    g,
+                    cell_value=approx_value[: g.num_cells] - exact_value[: g.num_cells],
+                )
                 debug = True
 
-            if field.name == 'displacement' and False:
+            if field.name == "displacement" and False:
                 pp.plot_grid(sd, cell_value=approx_value[::2])
                 pp.plot_grid(sd, cell_value=exact_value[::2])
-                pp.plot_grid(sd, cell_value=approx_value[::2]-exact_value[::2])
+                pp.plot_grid(sd, cell_value=approx_value[::2] - exact_value[::2])
                 debug = True
 
-            if field.is_cc and sd.num_cells > 30 and (field.name == 'rotation' or field.name == 'volumetric_strain'):
+            if (
+                field.is_cc
+                and sd.num_cells > 30
+                and (field.name == "rotation" or field.name == "volumetric_strain")
+            ):
                 if False:
-                    if field.name == 'displacement':
+                    if field.name == "displacement":
                         stride = 2
                     else:
-                        stride=1
+                        stride = 1
                     if isinstance(exact_value, list):
                         ev = exact_value[0]
                     elif isinstance(exact_value, (int, float)):
@@ -73,21 +80,20 @@ class DataSaving(VerificationDataSaving):
                         figsize=(15, 15),
                     )
                     import matplotlib.pyplot as plt
-                    plt.savefig(f'{field.name}_approx.png')
+
+                    plt.savefig(f"{field.name}_approx.png")
                     pp.plot_grid(
                         sd,
                         cell_value=ev[::stride],
                         figsize=(15, 15),
                     )
-                    plt.savefig(f'{field.name}_exact.png')
+                    plt.savefig(f"{field.name}_exact.png")
                     pp.plot_grid(
                         sd,
                         cell_value=(approx_value - ev)[::stride],
                         figsize=(15, 15),
                     )
-                    plt.savefig(f'{field.name}_error.png')
-                
-
+                    plt.savefig(f"{field.name}_error.png")
 
             collected_data[field.name] = (error, ref_norm)
 
@@ -151,18 +157,18 @@ class DataSaving(VerificationDataSaving):
         mu = stiffness.mu
         lmbda = stiffness.lmbda
 
-        permeability = fluid_data["second_order_tensor"].values[0,0]
+        permeability = fluid_data["second_order_tensor"].values[0, 0]
 
         # Obtain proper measure, e.g., cell volumes for cell-centered quantities and face
         # areas for face-centered quantities.
         if is_cc:
             vol = grid.cell_volumes
 
-            if name == 'rotation':
+            if name == "rotation":
                 meas = vol / mu
-            elif name == 'volumetric_strain':
+            elif name == "volumetric_strain":
                 meas = vol / mu
-            elif name == 'displacement':
+            elif name == "displacement":
                 meas = vol * mu
             elif name == "pressure":
                 meas = vol
@@ -175,19 +181,21 @@ class DataSaving(VerificationDataSaving):
             dist_fc_cc = np.sqrt(np.sum(fc_cc**2, axis=0))
 
             def facewise_harmonic_mean(field):
-                return 1 / np.bincount(fi, weights=1 / field[ci], minlength=grid.num_faces)
+                return 1 / np.bincount(
+                    fi, weights=1 / field[ci], minlength=grid.num_faces
+                )
 
             def arithmetic_mean(field):
                 return np.bincount(fi, weights=field[ci], minlength=grid.num_faces)
 
-            if name == 'total_rotation':
+            if name == "total_rotation":
                 parameter_weight = arithmetic_mean(cosserat_parameter)
-            elif name == 'stress':
+            elif name == "stress":
                 parameter_weight = facewise_harmonic_mean(mu)
-            elif name == 'darcy_flux':
+            elif name == "darcy_flux":
                 parameter_weight = facewise_harmonic_mean(permeability)
             else:
-                raise ValueError('Unknown field')
+                raise ValueError("Unknown field")
 
             # Distance between neighboring cells
             dist_cc_cc = np.bincount(fi, weights=dist_fc_cc, minlength=grid.num_cells)
@@ -211,7 +219,6 @@ class DataSaving(VerificationDataSaving):
             raise ZeroDivisionError("Attempted division by zero.")
 
         return numerator, denominator
-
 
 
 class ExactSolution:
@@ -247,11 +254,11 @@ class ExactSolution:
                 return v * ((1 - char_func) + char_func * heterogeneity)
 
         u = [sym.sin(pi * x) * (1 - y) * y, sym.sin(pi * y) * (1 - x) * x]
-        #u = [x, y]
+        # u = [x, y]
 
         rot = [x * (1 - x) * sym.sin(pi * y)]
         fluid_p = u[0]
-        #rot = [x - y]
+        # rot = [x - y]
 
         solid_p = u[1]
 
@@ -281,12 +288,16 @@ class ExactSolution:
         # Exact elastic stress
         sigma_total = [
             [
-                lame_lmbda * solid_p + 2 * lame_mu * grad_u[0][0] - biot_coefficient * fluid_p,
+                lame_lmbda * solid_p
+                + 2 * lame_mu * grad_u[0][0]
+                - biot_coefficient * fluid_p,
                 lame_mu * (2 * grad_u[0][1] - rot[0]),
             ],
             [
                 lame_mu * (2 * grad_u[1][0] + rot[0]),
-                lame_lmbda * solid_p + 2 * lame_mu * grad_u[1][1] - biot_coefficient * fluid_p,
+                lame_lmbda * solid_p
+                + 2 * lame_mu * grad_u[1][1]
+                - biot_coefficient * fluid_p,
             ],
         ]
         # Mechanics source term
@@ -299,7 +310,7 @@ class ExactSolution:
             source_rot = (
                 sym.diff(couple_stress[0][0], x)
                 + sym.diff(couple_stress[0][1], y)
-                - (sigma_total[1][0] - sigma_total[0][1]) / lame_mu 
+                - (sigma_total[1][0] - sigma_total[0][1]) / lame_mu
             ) / 2
         else:
             return NotImplementedError("3D not implemented")
@@ -319,29 +330,33 @@ class ExactSolution:
         # Primary variables
         self.u = u  # displacement
         self.rot = rot
-        self.solid_pressure = solid_p * lame_lmbda - biot_coefficient * fluid_p  # Solid pressure
+        self.solid_pressure = (
+            solid_p * lame_lmbda - biot_coefficient * fluid_p
+        )  # Solid pressure
         # Secondary variables
         self.sigma_total = sigma_total  # poroelastic (total) stress
-       
-        # The 3d expression will be different
-        total_rotation = [[couple_stress[0][0] / 2 - u[1],
-                           couple_stress[0][1] / 2 + u[0]]]
 
+        # The 3d expression will be different
+        total_rotation = [
+            [couple_stress[0][0] / 2 - u[1], couple_stress[0][1] / 2 + u[0]]
+        ]
 
         self.total_rot = total_rotation  # Cosserat couple stress
-        self.alt_source_rot = sym.diff(total_rotation[0][0], x) + sym.diff(total_rotation[0][1], y) - rot[0] / lame_mu
+        self.alt_source_rot = (
+            sym.diff(total_rotation[0][0], x)
+            + sym.diff(total_rotation[0][1], y)
+            - rot[0] / lame_mu
+        )
 
         # Source terms
         self.source_mech = source_mech  # Source term entering the momentum balance
-        self.source_rotation = (
-            source_rot
-        )  # Source term entering the rotation balance
+        self.source_rotation = source_rot  # Source term entering the rotation balance
         self.source_p = source_p  # Source term entering the solid pressure balance
 
         self.source_flow = source_flow
         self.f_pressure = fluid_p  # Fluid pressure
 
-        self.q = q # Darcy flux
+        self.q = q  # Darcy flux
 
         # Heterogeneous material parameters. Make these available, so that a model can
         # be populated with these parameters.
@@ -481,7 +496,6 @@ class ExactSolution:
         p_cc = p_fun(time, *self._cc(sd))
 
         return p_cc
-        
 
     def stress(self, sd: pp.Grid, time: float) -> np.ndarray:
         """Evaluate exact poroelastic force at the face centers.
@@ -628,7 +642,7 @@ class ExactSolution:
             q_fun[0](fc[0], fc[1], time) * fn[0] + q_fun[1](fc[0], fc[1], time) * fn[1]
         )
 
-        return q_fc        
+        return q_fc
 
     # -----> Sources
     def mechanics_source(self, sd: pp.Grid, time: float) -> np.ndarray:
@@ -705,6 +719,7 @@ class ExactSolution:
         source_p = source_p_fun(time, *self._cc(sd)) * vol
 
         return source_p
+
 
 class UnitSquareGrid(pp.ModelGeometry):
     """Class for setting up the geometry of the unit square domain.
@@ -830,6 +845,7 @@ class SourceTerms:
 
         return external_sources
 
+
 class MBSolutionStrategy(pp.poromechanics.SolutionStrategyPoromechanics):
     """Solution strategy for the verification setup."""
 
@@ -859,14 +875,12 @@ class MBSolutionStrategy(pp.poromechanics.SolutionStrategyPoromechanics):
             Field("displacement", False, True, True),
             Field("rotation", params["nd"] == 2, True, True),
             Field("volumetric_strain", True, True, True),
-            Field("pressure", True, True, True)
+            Field("pressure", True, True, True),
         ]
-        
+
         self.fields.append(Field("stress", False, False, True))
         self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
         self.fields.append(Field("darcy_flux", True, False, True))
-
-
 
     def initial_condition(self):
         super().initial_condition()
@@ -928,7 +942,7 @@ class MBSolutionStrategy(pp.poromechanics.SolutionStrategyPoromechanics):
             values=fluid_pressure_source,
             data=data,
             time_step_index=0,
-        )        
+        )
 
     def after_nonlinear_convergence(
         self, solution: np.ndarray, errors: float, iteration_counter: int
@@ -988,6 +1002,7 @@ class MBSolutionStrategy(pp.poromechanics.SolutionStrategyPoromechanics):
         """The problem is linear."""
         return False
 
+
 class EquationsPoromechanics(
     pp.fluid_mass_balance.MassBalanceEquations,
     pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
@@ -1007,10 +1022,10 @@ class EquationsPoromechanics(
         eq = super().solid_mass_equation(subdomains)
 
         factor = self._biot_coefficient_inv_lambda(subdomains)
-        full_eq = eq -  self.volume_integral(
-             factor * self.pressure(subdomains), subdomains, dim=1
+        full_eq = eq - self.volume_integral(
+            factor * self.pressure(subdomains), subdomains, dim=1
         )
-        #eq.name = "solid_mass_poromechanics"
+        # eq.name = "solid_mass_poromechanics"
         return full_eq
 
     def _biot_coefficient_inv_lambda(self, subdomains):
@@ -1020,7 +1035,7 @@ class EquationsPoromechanics(
         # Conservation of solid mass
         factor = self.biot_coefficient(subdomains) * inv_lmbda
         return factor
-        
+
     def mass_balance_equation(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Mass balance equation for subdomains.
 
@@ -1060,16 +1075,23 @@ class EquationsPoromechanics(
             Operator representing the cell-wise fluid mass.
 
         """
-        eff_compressibility = pp.ad.Scalar(self.fluid.compressibility()) + self._biot_coefficient_inv_lambda(subdomains) * self.biot_coefficient(subdomains)
+        eff_compressibility = pp.ad.Scalar(
+            self.fluid.compressibility()
+        ) + self._biot_coefficient_inv_lambda(subdomains) * self.biot_coefficient(
+            subdomains
+        )
 
         fluid_contribution = eff_compressibility * self.pressure(subdomains)
 
-        solid_contribution = self._biot_coefficient_inv_lambda(subdomains) * self.solid_pressure(subdomains)
+        solid_contribution = self._biot_coefficient_inv_lambda(
+            subdomains
+        ) * self.solid_pressure(subdomains)
 
-        mass = self.volume_integral(fluid_contribution + solid_contribution, subdomains, dim=1)
+        mass = self.volume_integral(
+            fluid_contribution + solid_contribution, subdomains, dim=1
+        )
         mass.set_name("fluid_mass")
-        return mass        
-
+        return mass
 
 
 class ConstitutiveLaws(
@@ -1097,7 +1119,6 @@ class ConstitutiveLaws(
         val = 1
         return pp.wrap_as_dense_ad_array(val, nc)
 
-
     def stress(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Stress operator.
 
@@ -1110,6 +1131,7 @@ class ConstitutiveLaws(
         """
         # Method from constitutive library's LinearElasticRock.
         return self.mechanical_stress(subdomains)
+
 
 class BoundaryConditions(pp.poromechanics.BoundaryConditionsPoromechanics):
     def bc_values_pressure(self, boundary_grid: pp.BoundaryGrid) -> np.ndarray:
@@ -1150,7 +1172,7 @@ class BoundaryConditions(pp.poromechanics.BoundaryConditionsPoromechanics):
             values on the provided boundary grid.
 
         """
-        return np.zeros(boundary_grid.num_cells)        
+        return np.zeros(boundary_grid.num_cells)
 
 
 class Variables(
@@ -1167,7 +1189,6 @@ class Variables(
         pp.momentum_balance.VariablesThreeFieldMomentumBalance.create_variables(self)
 
 
-
 class Setup(  # type: ignore[misc]
     UnitSquareGrid,
     SourceTerms,
@@ -1176,6 +1197,6 @@ class Setup(  # type: ignore[misc]
     EquationsPoromechanics,
     ConstitutiveLaws,
     Variables,
-    pp.poromechanics.BoundaryConditionsPoromechanics
+    pp.poromechanics.BoundaryConditionsPoromechanics,
 ):
     pass

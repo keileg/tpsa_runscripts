@@ -30,12 +30,16 @@ triangles = []
 for i in range(len(x) - 1):
     for j in range(len(y) - 1):
         # Define the indices for the lower triangle
-        lower_triangle = [i + j*len(x), i + 1 + j*len(x), i + (j+1)*len(x)]
+        lower_triangle = [i + j * len(x), i + 1 + j * len(x), i + (j + 1) * len(x)]
         triangles.append(lower_triangle)
-        
+
         # Define the indices for the upper triangle
-        upper_triangle = [i + 1 + j*len(x), i + 1 + (j+1)*len(x), i + (j+1)*len(x)]
-        triangles.append(upper_triangle)    
+        upper_triangle = [
+            i + 1 + j * len(x),
+            i + 1 + (j + 1) * len(x),
+            i + (j + 1) * len(x),
+        ]
+        triangles.append(upper_triangle)
 
 g = pp.TriangleGrid(coords.T, np.array(triangles).T)
 
@@ -43,7 +47,7 @@ g = pp.TriangleGrid(coords.T, np.array(triangles).T)
 internal_dofs = np.array([5, 6, 9, 10])
 internal_vector_dofs = pp.fvutils.expand_indices_nd(internal_dofs, g.dim)
 
-#g.nodes[:g.dim] += np.random.rand(2, g.num_nodes)
+# g.nodes[:g.dim] += np.random.rand(2, g.num_nodes)
 
 g.compute_geometry()
 mu = np.ones(g.num_cells)
@@ -81,7 +85,7 @@ mass_volumetric_strain = matrix_dictionary[tpsa.mass_volumetric_strain_matrix_ke
 mass_displacement = matrix_dictionary[tpsa.mass_displacement_matrix_key]
 
 # The following should be zero
-u_constant = np.vstack([np.ones(g.num_cells), 2 * np.ones(g.num_cells)]).ravel('F')
+u_constant = np.vstack([np.ones(g.num_cells), 2 * np.ones(g.num_cells)]).ravel("F")
 rot_constant = np.ones(g.num_cells)
 divu_constant = np.zeros(g.num_cells)
 
@@ -92,7 +96,7 @@ gyy = 0.3
 
 import sympy as sym
 
-u_linear = np.vstack([gxx * g.cell_centers[0], gyy * g.cell_centers[1]]).ravel('F')
+u_linear = np.vstack([gxx * g.cell_centers[0], gyy * g.cell_centers[1]]).ravel("F")
 rot_linear = gxx * g.cell_centers[1] - gyy * g.cell_centers[0]
 divu_linear = (gxx + gyy) * np.ones(g.num_cells)
 
@@ -110,8 +114,8 @@ else:
     rot = np.zeros(g.num_cells)
     divu = divu_linear
 
-    s_u = np.vstack([gyy* np.ones(g.num_cells), gxx * np.ones(g.num_cells)]).ravel('F')
-    s_rot = - gxx * g.cell_centers[0] + gyy * g.cell_centers[1]
+    s_u = np.vstack([gyy * np.ones(g.num_cells), gxx * np.ones(g.num_cells)]).ravel("F")
+    s_rot = -gxx * g.cell_centers[0] + gyy * g.cell_centers[1]
     s_rot = 0
     s_divu = 0
 

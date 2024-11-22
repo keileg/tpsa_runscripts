@@ -53,6 +53,7 @@ def run_convergence_analysis(
 
     return all_results
 
+
 def run_poromech_convergence_analysis(
     grid_type: str,
     refinement_levels: int,
@@ -73,11 +74,14 @@ def run_poromech_convergence_analysis(
         cos_results = []
 
         for perm in permeabilities:
-            solid = pp.SolidConstants({"lame_lambda": lambda_param,
-                                      "permeability": perm,
-                                      "biot_coefficient": 1})
-            fluid = pp.FluidConstants({"pressure": 0,
-                                        "compressibility": 0.01})
+            solid = pp.SolidConstants(
+                {
+                    "lame_lambda": lambda_param,
+                    "permeability": perm,
+                    "biot_coefficient": 1,
+                }
+            )
+            fluid = pp.FluidConstants({"pressure": 0, "compressibility": 0.01})
             conv_analysis = ConvergenceAnalysis(
                 model_class=solution_poromechanics.Setup,
                 model_params={
@@ -99,7 +103,8 @@ def run_poromech_convergence_analysis(
             cos_results.append(res)
         all_results.append(cos_results)
 
-    return all_results    
+    return all_results
+
 
 def _add_convergence_lines(ax, fontsize_ticks):
     x_vals = ax.get_xlim()
@@ -114,10 +119,10 @@ def _add_convergence_lines(ax, fontsize_ticks):
     y_1 = y_0 + 0.1 * diff
     y_2 = y_0 + 0.2 * diff
 
-    ax.plot([x_0, x_1], [y_1, y_0], color='black')
-    ax.plot([x_0, x_1], [y_2 + 0.1 * diff, y_0 + 0.1 * diff], color='black')
+    ax.plot([x_0, x_1], [y_1, y_0], color="black")
+    ax.plot([x_0, x_1], [y_2 + 0.1 * diff, y_0 + 0.1 * diff], color="black")
     ax.text(x_0 - 0.05 * dx, y_1, "1", fontsize=fontsize_ticks)
-    ax.text(x_0 - 0.05 * dx, y_2 + 0.1 * diff, "2", fontsize=fontsize_ticks)    
+    ax.text(x_0 - 0.05 * dx, y_2 + 0.1 * diff, "2", fontsize=fontsize_ticks)
 
 
 cosserat_parameters = [1, 1e-2, 1e-4, 1e-6]
@@ -139,12 +144,12 @@ refinement_levels = 5
 
 elasticity_filename_stem = "elasticity_2d"
 
-grid_types = ['cartesian']
+grid_types = ["cartesian"]
 grid_types = ["cartesian", "cartesian", "cartesian", "simplex"]
 perturbations = [0.0, 0.2, 0.2, 0]
 h2_perturbations = [False, False, True, False]
 if run_elasticity:
-    print('Running elasticity convergence')
+    print("Running elasticity convergence")
     for i in range(len(grid_types)):
         params = {
             "grid_type": grid_types[i],
@@ -156,12 +161,19 @@ if run_elasticity:
             "nd": 2,
         }
         elasticity_results = run_convergence_analysis(**params)
-        filename = f"{elasticity_filename_stem}_{grid_types[i]}_pert_{perturbations[i]}_h2_{h2_perturbations[i]}".replace('.','-') + ".pkl"
+        filename = (
+            f"{elasticity_filename_stem}_{grid_types[i]}_pert_{perturbations[i]}_h2_{h2_perturbations[i]}".replace(
+                ".", "-"
+            )
+            + ".pkl"
+        )
 
         for m in range(len(elasticity_results)):
             for j in range(len(elasticity_results[m])):
                 for k in range(len(elasticity_results[m][j])):
-                    elasticity_results[m][j][k] = dataclasses.asdict(elasticity_results[m][j][k])
+                    elasticity_results[m][j][k] = dataclasses.asdict(
+                        elasticity_results[m][j][k]
+                    )
 
         with open(filename, "wb") as f:
             pickle.dump([elasticity_results, params], f)
@@ -169,14 +181,16 @@ if run_elasticity:
 if plot_elasticity:
     print("Plotting elasticity convergence")
     for grid_ind in range(len(grid_types)):
-        full_stem = f"{elasticity_filename_stem}_{grid_types[grid_ind]}_pert_{perturbations[grid_ind]}_h2_{h2_perturbations[grid_ind]}".replace('.','-')
+        full_stem = f"{elasticity_filename_stem}_{grid_types[grid_ind]}_pert_{perturbations[grid_ind]}_h2_{h2_perturbations[grid_ind]}".replace(
+            ".", "-"
+        )
         filename = f"{full_stem}.pkl"
         with open(filename, "rb") as f:
             res, params = pickle.load(f)
         i = 0  # There is only one cosserat parameter
 
-        colors = ['orange', 'blue', 'green', 'red']
-        markers = ['o', 's', 'D', 'X']
+        colors = ["orange", "blue", "green", "red"]
+        markers = ["o", "s", "D", "X"]
         to_plot = []
         fig, ax = plt.subplots()
         for j in range(len(res[i])):  # Loop over lambda
@@ -186,31 +200,42 @@ if plot_elasticity:
             for k in range(len(res[i][j])):
                 error = 0
                 ref_val = 0
-                error_str = ''
+                error_str = ""
                 key_list = []
                 for key, val in res[i][j][k].items():
-                    if key in ["displacement", "volumetric_strain", "stress", "rotation", 'total_rotation']:
+                    if key in [
+                        "displacement",
+                        "volumetric_strain",
+                        "stress",
+                        "rotation",
+                        "total_rotation",
+                    ]:
                         error += val[0]
                         ref_val += val[1]
                         error_str += f"{val[0] / val[1]}, "
                         key_list.append(key)
-                #print(error)
+                # print(error)
                 if k == 0:
                     print(key_list)
                 print(error_str)
                 all_errors.append(error / ref_val)
-                cell_volumes.append(res[i][j][k]['cell_diameter'])
+                cell_volumes.append(res[i][j][k]["cell_diameter"])
 
-            if params['lame_lambdas'][j] == 1:
-                l_val = '1'
+            if params["lame_lambdas"][j] == 1:
+                l_val = "1"
             else:
-                if params['lame_lambdas'][j] > 1e8:
+                if params["lame_lambdas"][j] > 1e8:
                     l_val = f"$\infty$"
-                else:    
+                else:
                     l_val = f"1e{int(np.log10(params['lame_lambdas'][j]))}"
 
-            ax.plot(-np.log(cell_volumes), np.log(all_errors), marker=markers[j],
-                     color=colors[j], label=f"$\lambda$: {l_val}")
+            ax.plot(
+                -np.log(cell_volumes),
+                np.log(all_errors),
+                marker=markers[j],
+                color=colors[j],
+                label=f"$\lambda$: {l_val}",
+            )
 
             print("")
 
@@ -258,7 +283,9 @@ if run_cosserat:
         for i in range(len(cosserat_results)):
             for j in range(len(cosserat_results[i])):
                 for k in range(len(cosserat_results[i][j])):
-                    cosserat_results[i][j][k] = dataclasses.asdict(cosserat_results[i][j][k])
+                    cosserat_results[i][j][k] = dataclasses.asdict(
+                        cosserat_results[i][j][k]
+                    )
 
         with open(filename, "wb") as f:
             pickle.dump([cosserat_results, params], f)
@@ -270,11 +297,11 @@ if plot_cosserat:
         with open(filename, "rb") as f:
             res, params = pickle.load(f)
 
-        colors = ['orange', 'blue', 'green', 'red']
-        markers = ['o', 's', 'D', 'X']
+        colors = ["orange", "blue", "green", "red"]
+        markers = ["o", "s", "D", "X"]
         to_plot = []
         fig, ax = plt.subplots()
-        j = 0 # There is only one lambda
+        j = 0  # There is only one lambda
         for i in range(len(res)):  # Loop over cosserat
             print(f"cosserat: {params['cosserat_parameters'][i]}")
             all_errors = []
@@ -282,28 +309,39 @@ if plot_cosserat:
             for k in range(0, len(res[i][j])):
                 error = 0
                 ref_val = 0
-                error_str = ''
+                error_str = ""
                 key_list = []
                 for key, val in res[i][j][k].items():
-                    if key in ["displacement", 'rotation', "volumetric_strain", "stress", 'total_rotation']:
+                    if key in [
+                        "displacement",
+                        "rotation",
+                        "volumetric_strain",
+                        "stress",
+                        "total_rotation",
+                    ]:
                         error += val[0]
                         ref_val += val[1]
                         error_str += f"{val[0] / val[1]}, "
                         key_list.append(key)
-                #print(error)
+                # print(error)
                 if k == 0:
                     print(key_list)
                 print(error_str)
                 all_errors.append(error / ref_val)
-                cell_volumes.append(res[i][j][k]['cell_diameter'])
+                cell_volumes.append(res[i][j][k]["cell_diameter"])
 
-            if params['cosserat_parameters'][i] == 1:
-                l_val = '1'
+            if params["cosserat_parameters"][i] == 1:
+                l_val = "1"
             else:
                 l_val = f"1e{int(np.log10(np.sqrt(params['cosserat_parameters'][i])))}"
 
-            ax.plot(-np.log(cell_volumes), np.log(all_errors), marker=markers[i],
-                     color=colors[i], label=f"$\ell$: {l_val}")
+            ax.plot(
+                -np.log(cell_volumes),
+                np.log(all_errors),
+                marker=markers[i],
+                color=colors[i],
+                label=f"$\ell$: {l_val}",
+            )
 
             print("")
 
@@ -328,7 +366,7 @@ if plot_cosserat:
 
 poromech_filename_stem = "poromechanics_2d"
 
-grid_types = ['cartesian']
+grid_types = ["cartesian"]
 grid_types = ["cartesian", "cartesian", "cartesian", "simplex"]
 perturbations = [0.0, 0.2, 0.2, 0]
 h2_perturbations = [False, False, True, False]
@@ -354,7 +392,9 @@ if run_poromechanics:
         for i in range(len(cosserat_results)):
             for j in range(len(cosserat_results[i])):
                 for k in range(len(cosserat_results[i][j])):
-                    cosserat_results[i][j][k] = dataclasses.asdict(cosserat_results[i][j][k])
+                    cosserat_results[i][j][k] = dataclasses.asdict(
+                        cosserat_results[i][j][k]
+                    )
 
         with open(filename, "wb") as f:
             pickle.dump([cosserat_results, params], f)
@@ -366,11 +406,11 @@ if plot_poromechanics:
         with open(filename, "rb") as f:
             res, params = pickle.load(f)
 
-        colors = ['orange', 'blue', 'green', 'red']
-        markers = ['o', 's', 'D', 'X']
+        colors = ["orange", "blue", "green", "red"]
+        markers = ["o", "s", "D", "X"]
         to_plot = []
         fig, ax = plt.subplots()
-        i = 0 # There is only one Cosserat
+        i = 0  # There is only one Cosserat
         for j in range(len(res[i])):  # Loop over cosserat
             print(f"Permeability: {params['permeabilities'][j]}")
             all_errors = []
@@ -378,28 +418,41 @@ if plot_poromechanics:
             for k in range(0, len(res[i][j])):
                 error = 0
                 ref_val = 0
-                error_str = ''
+                error_str = ""
                 key_list = []
                 for key, val in res[i][j][k].items():
-                    if key in ["displacement", 'rotation', "volumetric_strain", "stress", 'total_rotation', "pressure", "darcy_flux"]:
+                    if key in [
+                        "displacement",
+                        "rotation",
+                        "volumetric_strain",
+                        "stress",
+                        "total_rotation",
+                        "pressure",
+                        "darcy_flux",
+                    ]:
                         error += val[0]
                         ref_val += val[1]
                         error_str += f"{val[0] / val[1]}, "
                         key_list.append(key)
-                #print(error)
+                # print(error)
                 if k == 0:
                     print(key_list)
                 print(error_str)
                 all_errors.append(error / ref_val)
-                cell_volumes.append(res[i][j][k]['cell_diameter'])
+                cell_volumes.append(res[i][j][k]["cell_diameter"])
 
-            if params['permeabilities'][j] == 1:
-                l_val = '1'
+            if params["permeabilities"][j] == 1:
+                l_val = "1"
             else:
                 l_val = f"1e{int(np.log10(params['permeabilities'][j]))}"
 
-            ax.plot(-np.log(cell_volumes), np.log(all_errors), marker=markers[j],
-                     color=colors[j], label=f"$\kappa$: {l_val}")
+            ax.plot(
+                -np.log(cell_volumes),
+                np.log(all_errors),
+                marker=markers[j],
+                color=colors[j],
+                label=f"$\kappa$: {l_val}",
+            )
 
             print("")
 
@@ -473,5 +526,3 @@ def print_error_summed_normed(res, fields):
 # plt.legend()
 # plt.yscale('log')
 # plt.show()
-
-

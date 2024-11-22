@@ -67,11 +67,13 @@ class DataSaving(VerificationDataSaving):
             )
             collected_data[field.name] = (error, ref_norm)
 
-        #exporter = pp.Exporter(self.mdg, file_name=f"results_{sd.num_cells}_cells")
-        #exporter.write_vtu(export_data)
+        # exporter = pp.Exporter(self.mdg, file_name=f"results_{sd.num_cells}_cells")
+        # exporter.write_vtu(export_data)
 
         collected_data["time"] = t
-        collected_data["cell_diameter"] = sd.cell_diameters(cell_wise=False, func=np.min)
+        collected_data["cell_diameter"] = sd.cell_diameters(
+            cell_wise=False, func=np.min
+        )
 
         # Convert to dataclass, big thanks to https://stackoverflow.com/a/77325321
         return make_dataclass(
@@ -134,7 +136,7 @@ class DataSaving(VerificationDataSaving):
             has_fluid = False
 
         stiffness = mech_data["fourth_order_tensor"]
-        
+
         try:
             cosserat_parameter = mech_data["cosserat_parameter"]
         except KeyError:
@@ -290,7 +292,7 @@ class ExactSolution:
                     sym.diff(pot, y) - sym.diff(pot, z),
                     sym.diff(pot, z) - sym.diff(pot, x),
                     sym.diff(pot, x) - sym.diff(pot, y),
-                ]                
+                ]
 
                 # cosserat_parameter = sym.Min(
                 #    1, sym.Max(0, sym.Max(3 * x - 1, 3 * y - 1))
@@ -414,8 +416,7 @@ class ExactSolution:
             sigma_total[1][0] - sigma_total[0][1],
         ]
         source_rot = [
-            div_couple_stress[i] - stress_asymmetry[i]
-            for i in range(self.nd)
+            div_couple_stress[i] - stress_asymmetry[i] for i in range(self.nd)
         ]
 
         source_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z) - solid_p
@@ -1078,14 +1079,14 @@ class UnitCubeGrid(pp.ModelGeometry):
                 if True:
                     distance_node_center = []
                     for ind in ni:
-                        dist = np.sqrt(np.sum((sd.nodes[:, ind] - center.T)**2, axis=0))
+                        dist = np.sqrt(
+                            np.sum((sd.nodes[:, ind] - center.T) ** 2, axis=0)
+                        )
                         distance_node_center.append(dist)
 
                     max_distance = np.max(np.abs(distance_node_center), axis=0)
                     min_distance = np.min(np.abs(distance_node_center), axis=0)
                     assert np.max(max_distance - min_distance) < 1e-10
-
-
 
                 ind_sets = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]
 
@@ -1131,7 +1132,11 @@ class UnitCubeGrid(pp.ModelGeometry):
 
                     # Is the face cross vector pointing into the cell?
                     cross_points_into_cell = np.sign(
-                        np.sum(face_cross[:, fi] * (sd.cell_centers - sd.face_centers[:, fi]), axis=0)
+                        np.sum(
+                            face_cross[:, fi]
+                            * (sd.cell_centers - sd.face_centers[:, fi]),
+                            axis=0,
+                        )
                     )
                     # The height of the cell, measured as the distance from the current
                     # face to the oposite node
@@ -1139,7 +1144,8 @@ class UnitCubeGrid(pp.ModelGeometry):
                     unit_vec = face_cross[:, fi] / face_cross_area[fi]
                     # Distance from the plane of the current face to the computed circumcenter
                     distances_from_faces.append(
-                        np.sum(unit_vec * (center.T - sd.face_centers[:, fi]), axis=0) / height
+                        np.sum(unit_vec * (center.T - sd.face_centers[:, fi]), axis=0)
+                        / height
                     )
                     #
                     inside_cell.append(
@@ -1188,7 +1194,7 @@ class UnitCubeGrid(pp.ModelGeometry):
 
                 normal = sd.face_normals[:, both_replaced]
 
-                cc_vec_cross_normal =  np.vstack(
+                cc_vec_cross_normal = np.vstack(
                     (
                         cc_vec[1] * normal[2] - cc_vec[2] * normal[1],
                         cc_vec[2] * normal[0] - cc_vec[0] * normal[2],
@@ -1196,9 +1202,6 @@ class UnitCubeGrid(pp.ModelGeometry):
                     )
                 )
                 assert np.linalg.norm(cc_vec_cross_normal) < 1e-10
-
-
-
 
     def set_domain(self) -> None:
         """Set domain."""
@@ -1354,9 +1357,7 @@ class SourceTerms:
         return external_sources
 
 
-class BoundaryConditions(
-    pp.momentum_balance.BoundaryConditionsMomentumBalance
-):
+class BoundaryConditions(pp.momentum_balance.BoundaryConditionsMomentumBalance):
 
     def bc_values_displacement(
         self, boundary_grid: pp.BoundaryGrid | pp.Grid
@@ -1438,7 +1439,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             self.fields.append(Field("total_pressure", True, True, False))
             self.fields.append(Field("rotation", params["nd"] == 2, True, True))
             self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
-
 
     def solve_linear_system(self) -> np.ndarray:
         """Solve linear system.
@@ -1555,7 +1555,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
             def print_resid(x):
                 pass
-                #print(np.linalg.norm(b - A @ x))
+                # print(np.linalg.norm(b - A @ x))
 
             if False:
                 x = np.zeros_like(b[p_solid_dof])
@@ -1653,7 +1653,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
     def _save_data_time_step(self) -> None:
         """No saving of data"""
-        #pass
+        # pass
 
     def before_nonlinear_loop(self) -> None:
         """Update values of external sources."""
@@ -1760,7 +1760,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
                 data[pp.PARAMETERS][self.stress_keyword][
                     "cosserat_parameter"
                 ] = cosserat_parameter
-
 
 
 class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
@@ -2092,10 +2091,11 @@ class EquationsMechanicsRealStokes:
         inv_lmbda = self.inv_lambda(subdomains)
         div_mass = pp.ad.Divergence(subdomains, 1)
 
-
         assert len(subdomains) == 1
-        bc_displacement = discr.bound_mass_displacement() @ self.bc_values_displacement(subdomains[0])
-        
+        bc_displacement = discr.bound_mass_displacement() @ self.bc_values_displacement(
+            subdomains[0]
+        )
+
         # Conservation of solid mass
         total_pressure = self.total_pressure(subdomains)
         solid_mass = div_mass @ (
@@ -2108,8 +2108,8 @@ class EquationsMechanicsRealStokes:
             # Only add the pressure term for reasonable values of lambda, above the
             # threshold of 1e8, we turn this into a Stokes discretization.
             solid_mass = solid_mass - self.volume_integral(
-            inv_lmbda * total_pressure, subdomains, dim=1)
-        
+                inv_lmbda * total_pressure, subdomains, dim=1
+            )
 
         solid_mass.set_name("solid_mass_equation")
         return solid_mass
@@ -2117,7 +2117,7 @@ class EquationsMechanicsRealStokes:
 
 class EquationsPoromechanics(
     pp.fluid_mass_balance.MassBalanceEquations,
-    #pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
+    # pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
 ):
     """Combines mass and momentum balance equations."""
 
@@ -2129,7 +2129,6 @@ class EquationsPoromechanics(
         """
         pp.fluid_mass_balance.MassBalanceEquations.set_equations(self)
         pp.momentum_balance.ThreeFieldMomentumBalanceEquations.set_equations(self)
-
 
     def mass_balance_equation(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Mass balance equation for subdomains.
@@ -2190,7 +2189,7 @@ class EquationsPoromechanics(
 
 
 class ConstitutiveLawsPoromechanics(
-#    pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
+    #    pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
     pp.poromechanics.ConstitutiveLawsPoromechanics,
 ):
     def darcy_flux_discretization(self, subdomains: list[pp.Grid]) -> pp.ad.MpfaAd:
@@ -2233,11 +2232,11 @@ class SetupTpsa(  # type: ignore[misc]
     SourceTerms,
     MBSolutionStrategy,
     DataSaving,
-    #EquationsMechanicsRealStokes,
-    #pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
-    #pp.momentum_balance.VariablesThreeFieldMomentumBalance,
-    #pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
-    #pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
+    # EquationsMechanicsRealStokes,
+    # pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
+    # pp.momentum_balance.VariablesThreeFieldMomentumBalance,
+    # pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
+    # pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
     pp.momentum_balance.TpsaMomentumBalanceMixin,
     BoundaryConditions,
     pp.momentum_balance.MomentumBalance,
@@ -2252,13 +2251,12 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
     SolutionStrategyPoromech,
     pp.momentum_balance.TpsaMomentumBalanceMixin,
     DataSaving,
-    #EquationsPoromechanics,
-    #VariablesThreeFieldPoromechanics,
+    # EquationsPoromechanics,
+    # VariablesThreeFieldPoromechanics,
     # pp.momentum_balance.ConstitutiveLawsMomentumBalance,
-    #pp.momentum_balance.VariablesThreeFieldMomentumBalance,
-    #pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
-    #pp.poromechanics.BoundaryConditionsPoromechanics,
+    # pp.momentum_balance.VariablesThreeFieldMomentumBalance,
+    # pp.momentum_balance.SolutionStrategyMomentumBalanceThreeField,
+    # pp.poromechanics.BoundaryConditionsPoromechanics,
     pp.poromechanics.Poromechanics,
 ):
     pass
-

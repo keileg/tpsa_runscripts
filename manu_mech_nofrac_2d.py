@@ -356,7 +356,7 @@ class ExactSolution:
             [sym.diff(u[0], x), sym.diff(u[0], y)],
             [sym.diff(u[1], x), sym.diff(u[1], y)],
         ]
-        #grad_u = [[sym.diff(u[i], var) for var in all_vars] for i in range(self.nd)]
+        # grad_u = [[sym.diff(u[i], var) for var in all_vars] for i in range(self.nd)]
         rot_dim = len(rot)
 
         grad_rot = [[sym.diff(rot[i], var) for var in all_vars] for i in range(rot_dim)]
@@ -428,14 +428,15 @@ class ExactSolution:
         self.cosserat_parameter_function = cosserat_parameter  # Cosserat parameter
         if False:
             import matplotlib.pyplot as plt
+
             np.random.seed(0)
             nx = 20
             xn, yn = np.meshgrid(np.linspace(0.5, 0.7, nx), np.linspace(0.5, 0.7, nx))
             xn += 0.2 / nx * np.random.rand(*xn.shape)
             yn += 0.2 / nx * np.random.rand(*yn.shape)
-            func = sym.lambdify((x, y), source_mech, 'numpy')
+            func = sym.lambdify((x, y), source_mech, "numpy")
             vals = func(xn, yn)[0]
-            fig, ax = plt.subplots(subplot_kw = {'projection': '3d'})
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
             ax.plot_surface(xn, yn, vals)
             plt.show()
         debug = []
@@ -621,7 +622,7 @@ class ExactSolution:
         force_total_flat: np.ndarray = np.asarray(force_total_fc).ravel("F")
 
         xf = sd.face_centers
-        dist = np.sqrt((xf[0] - 2/3)**2 + (xf[1] - 2/3)**2)
+        dist = np.sqrt((xf[0] - 2 / 3) ** 2 + (xf[1] - 2 / 3) ** 2)
 
         ind = np.argsort(dist)
 
@@ -1036,7 +1037,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             self.fields.append(Field("rotation", params["nd"] == 2, True, True))
             self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
 
-        self.linear_solver = 'iterative'
+        self.linear_solver = "iterative"
 
     def set_materials(self):
         """Set material parameters."""
@@ -1066,7 +1067,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             data=data,
             iterate_index=0,
         )
-
 
         boundary_faces = self.domain_boundary_sides(sd).all_bf
         u = self.exact_sol.displacement(sd, 0, cc=False)
@@ -1105,11 +1105,9 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             see linear_solve.
 
         """
-        self.linear_solver = "direct"        
+        self.linear_solver = "direct"
 
-    def after_nonlinear_convergence(
-        self, iteration_counter: int
-    ) -> None:
+    def after_nonlinear_convergence(self, iteration_counter: int) -> None:
         """Collect results."""
         super().after_nonlinear_convergence(iteration_counter)
 
@@ -1153,9 +1151,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
             method_str = "TPSA" if isinstance(self, SetupTpsa) else "MPSA"
 
-            displacement_str = (
-                f"{ex}_{method_str}{parameter_str}_displacement_{ref_level}_{cell_size}.npy"
-            )
+            displacement_str = f"{ex}_{method_str}{parameter_str}_displacement_{ref_level}_{cell_size}.npy"
             stress_str = (
                 f"{ex}_{method_str}{parameter_str}_stress_{ref_level}_{cell_size}.npy"
             )
@@ -1163,13 +1159,16 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             np.save(displacement_str, displacement)
             np.save(stress_str, stress)
 
-
             face_str = f"{ex}_{method_str}_face_centroid_{ref_level}_{cell_size}.npy"
             cell_str = f"{ex}_{method_str}_cell_centroid_{ref_level}_{cell_size}.npy"
 
             face_area_str = f"{ex}_{method_str}_face_length_{ref_level}_{cell_size}.npy"
-            cell_volume_str = f"{ex}_{method_str}_cell_volume_{ref_level}_{cell_size}.npy"
-            face_normal_str = f"{ex}_{method_str}_face_normal_{ref_level}_{cell_size}.npy"
+            cell_volume_str = (
+                f"{ex}_{method_str}_cell_volume_{ref_level}_{cell_size}.npy"
+            )
+            face_normal_str = (
+                f"{ex}_{method_str}_face_normal_{ref_level}_{cell_size}.npy"
+            )
 
             np.save(face_str, sd.face_centers)
             np.save(cell_str, sd.cell_centers)
@@ -1177,9 +1176,13 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             np.save(cell_volume_str, sd.cell_volumes)
             np.save(face_normal_str, sd.face_normals)
 
-            cell_center_str = f"{ex}_{method_str}_cell_center_{ref_level}_{cell_size}.npy"
+            cell_center_str = (
+                f"{ex}_{method_str}_cell_center_{ref_level}_{cell_size}.npy"
+            )
             np.save(cell_center_str, sd.cell_centers)
-            face_center_str = f"{ex}_{method_str}_face_center_{ref_level}_{cell_size}.npy"
+            face_center_str = (
+                f"{ex}_{method_str}_face_center_{ref_level}_{cell_size}.npy"
+            )
             np.save(face_center_str, sd.face_centers)
 
             cell_node_str = f"{ex}_{method_str}_cell_node_{ref_level}_{cell_size}.npy"
@@ -1196,6 +1199,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             debug = False
 
         # pp.plot_grid(sd, cell_value=displacement, figsize=(15, 15))
+
     def solve_linear_system(self) -> np.ndarray:
         """Solve linear system.
 
@@ -1368,8 +1372,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         print(f"Solved linear system in {time.time() - t_0:.2e} seconds.")
         return x
 
-
-
     def set_discretization_parameters(self) -> None:
         """Set parameters for the subproblems and the combined problem.
 
@@ -1398,7 +1400,6 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             cc = self.exact_sol._cc(sd)
 
             sd.compute_geometry()
-            
 
             # Set stiffness matrix
             lame_lmbda = evaluate(self.exact_sol.lame_lmbda)
@@ -1439,10 +1440,11 @@ class EquationsMechanicsRealStokes:
         inv_lmbda = self.inv_lambda(subdomains)
         div_mass = pp.ad.Divergence(subdomains, 1)
 
-
         assert len(subdomains) == 1
-        bc_displacement = discr.bound_mass_displacement() @ self.bc_values_displacement(subdomains[0])
-        
+        bc_displacement = discr.bound_mass_displacement() @ self.bc_values_displacement(
+            subdomains[0]
+        )
+
         # Conservation of solid mass
         volumetric_strain = self.total_pressure(subdomains)
         solid_mass = div_mass @ (
@@ -1455,12 +1457,11 @@ class EquationsMechanicsRealStokes:
             # Only add the pressure term for reasonable values of lambda, above the
             # threshold of 1e8, we turn this into a Stokes discretization.
             solid_mass = solid_mass - self.volume_integral(
-            inv_lmbda * volumetric_strain, subdomains, dim=1)
-        
+                inv_lmbda * volumetric_strain, subdomains, dim=1
+            )
 
         solid_mass.set_name("solid_mass_equation")
         return solid_mass
-
 
 
 class SetupTpsa(  # type: ignore[misc]
