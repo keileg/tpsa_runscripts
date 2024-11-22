@@ -1982,40 +1982,10 @@ class EquationsMechanicsRealStokes:
 
 
 class EquationsPoromechanics(
-    pp.fluid_mass_balance.MassBalanceEquations,
     #pp.momentum_balance.ThreeFieldMomentumBalanceEquations,
 ):
     """Combines mass and momentum balance equations."""
 
-    def set_equations(self):
-        """Set the equations for the poromechanics problem.
-
-        Call both parent classes' set_equations methods.
-
-        """
-        pp.fluid_mass_balance.MassBalanceEquations.set_equations(self)
-        pp.momentum_balance.ThreeFieldMomentumBalanceEquations.set_equations(self)
-
-
-    def mass_balance_equation(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-        """Mass balance equation for subdomains.
-
-        Parameters:
-            subdomains: List of subdomains.
-
-        Returns:
-            Operator representing the mass balance equation.
-
-        """
-        # Assemble the terms of the mass balance equation.
-        accumulation = self.fluid_mass(subdomains)
-        flux = self.darcy_flux(subdomains)
-        source = self.fluid_source(subdomains)
-
-        # Feed the terms to the general balance equation method.
-        eq = self.balance_equation(subdomains, accumulation, flux, source, dim=1)
-        eq.set_name("mass_balance_equation")
-        return eq
 
     def fluid_mass(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """The full measure of cell-wise fluid mass.
@@ -2036,17 +2006,15 @@ class EquationsPoromechanics(
             Operator representing the cell-wise fluid mass.
 
         """
+        biot = self.biot_coefficient(subdomains)
+        inv_lambda = self.inv_lambda(subdomains)
         eff_compressibility = pp.ad.Scalar(
-            self.fluid.compressibility()
-        ) + self._biot_coefficient_inv_lambda(subdomains) * self.biot_coefficient(
-            subdomains
-        )
+            self.fluid.reference_component.compressibility
+        ) + inv_lambda * biot **2 
 
         fluid_contribution = eff_compressibility * self.pressure(subdomains)
 
-        solid_contribution = self._biot_coefficient_inv_lambda(
-            subdomains
-        ) * self.total_pressure(subdomains)
+        solid_contribution = biot * inv_lambda * self.total_pressure(subdomains)
 
         mass = self.volume_integral(
             fluid_contribution + solid_contribution, subdomains, dim=1
@@ -2055,10 +2023,7 @@ class EquationsPoromechanics(
         return mass
 
 
-class ConstitutiveLawsPoromechanics(
-#    pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
-    pp.poromechanics.ConstitutiveLawsPoromechanics,
-):
+class ConstitutiveLawsPoromechanicsRunscript:
     def darcy_flux_discretization(self, subdomains: list[pp.Grid]) -> pp.ad.MpfaAd:
         """Discretization object for the Darcy flux term.
 
@@ -2079,19 +2044,6 @@ class ConstitutiveLawsPoromechanics(
             nc = subdomains[0].num_cells
         val = 1
         return pp.wrap_as_dense_ad_array(val, nc)
-
-    def stress(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-        """Stress operator.
-
-        Parameters:
-            subdomains: List of subdomains where the stress is defined.
-
-        Returns:
-            Operator for the stress.
-
-        """
-        # Method from constitutive library's LinearElasticRock.
-        return self.mechanical_stress(subdomains)
 
 
 class SetupTpsa(  # type: ignore[misc]
@@ -2116,6 +2068,8 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
     SourceTerms,
     BoundaryConditions,
     SolutionStrategyPoromech,
+    ConstitutiveLawsPoromechanicsRunscript,
+    EquationsPoromechanics,
     pp.poromechanics.TpsaPoromechanicsMixin,
     DataSaving,
     #EquationsPoromechanics,
