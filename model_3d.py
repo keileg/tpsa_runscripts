@@ -272,7 +272,35 @@ class ExactSolution:
                 # (div curl = 0)
                 solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
                 fluid_p = 0
-                cosserat_parameter = cosserat_parameter_base
+
+            case "heterogeneous_lame":
+
+                # The displacement is the curl of pot
+                u_base = [
+                    sym.sin(2 * pi * x) * y * (1 - y) * (1 / 2 - y) * z * (1 - z) * (z - 1/2),
+                    sym.sin(2 * pi * y) * x * (1 - x) * (1 / 2 - x) * z * (1 - z) * (z - 1/2),
+                    sym.sin(2 * pi * z) * x * (1 - x) * (1 / 2 - x) * y * (1 - y) * (y - 1/2),
+                ]
+                u = [
+                    make_heterogeneous(u_base[0], True),
+                    make_heterogeneous(u_base[1], True),
+                    make_heterogeneous(u_base[2], True),
+                ]
+
+                rot_base = [
+                    100 * x * (1 - x) * (x - 0.5) * sym.sin(2 * pi * y) * sym.sin(2 * pi * z),
+                    100 * y * (1 - y) * (y - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * z),
+                    100 * z * (1 - z) * (z - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * y),
+                ]
+                rot = [
+                    make_heterogeneous(rot_base[0], True),
+                    make_heterogeneous(rot_base[1], True),
+                    make_heterogeneous(rot_base[2], True),
+                ]
+                # The solid pressure is the divergence of the displacement, hence 0
+                # (div curl = 0)
+                solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
+                fluid_p = 0
 
             case "poromechanics":
                 u = [
@@ -281,7 +309,6 @@ class ExactSolution:
                     x * (1 - x) * y * (1 - y) * sym.sin(2 * pi * z),
                 ]
 
-                cosserat_parameter = cosserat_parameter_base
                 rot = [
                     x * (1 - x) * sym.sin(pi * y) * sym.sin(pi * z),
                     y * (1 - y) * sym.sin(pi * x) * sym.sin(pi * z),
@@ -396,7 +423,6 @@ class ExactSolution:
         # be populated with these parameters.
         self.lame_lmbda = lame_lmbda  # Lamé parameter
         self.lame_mu = lame_mu  # Lamé parameter
-        self.cosserat_parameter_function = cosserat_parameter  # Cosserat parameter
 
     def _symbols(self):
         if self.nd == 2:
@@ -782,9 +808,20 @@ class UnitCubeGrid(pp.ModelGeometry):
     def set_geometry(self) -> None:
         super().set_geometry()
 
+        solution_type = self.params.get("analytical_solution")
+
         if self.params.get("prismatic_extrusion"):
             # Create a 2d simplex grid, extrude it
-            network = pp.create_fracture_network(domain=nd_cube_domain(2, 1))
+
+            if solution_type == "heterogeneous_lame":
+                fracs = [pp.LineFracture(np.array([[0.5, 0.5], [0.5, 1]])),
+                            pp.LineFracture(np.array([[0.5, 0.5], [1, 0.5]]))
+                ]
+            else:
+                fracs = []
+                
+
+            network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1))
             tmp_mdg = pp.create_mdg(
                 "simplex",
                 self.meshing_arguments(),
@@ -878,49 +915,23 @@ class UnitCubeGrid(pp.ModelGeometry):
         if self.params.get("h2_perturbation", False):
             pert_rate *= np.sqrt(h)
 
-        solution_type = self.params.get("analytical_solution")
-
         match solution_type:
 
             case "heterogeneous_lame":
                 pert_nodes = np.logical_not(
                     np.logical_or.reduce(
                         (
-                            np.isin(x, [0, 1 / 2, 1]),
-                            np.isin(y, [0, 1 / 2, 1]),
-                            np.isin(z, [0, 1 / 2, 1]),
-                        )
-                    )
-                )
-            case "cosserat_heterogeneous":
-                pert_nodes = np.logical_not(
-                    np.logical_or.reduce(
-                        (
+                            # Exterior boundary
                             np.isin(x, [0, 1]),
                             np.isin(y, [0, 1]),
                             np.isin(z, [0, 1]),
-                            np.logical_and(
-                                x == 1 / 3, np.logical_or(y <= 1 / 3, z <= 1 / 3)
-                            ),
-                            np.logical_and(
-                                y == 1 / 3, np.logical_or(x <= 1 / 3, z <= 1 / 3)
-                            ),
-                            np.logical_and(
-                                z == 1 / 3, np.logical_or(x <= 1 / 3, y <= 1 / 3)
-                            ),
-                            np.logical_and(
-                                x == 2 / 3, np.logical_or(y <= 2 / 3, z <= 2 / 3)
-                            ),
-                            np.logical_and(
-                                y == 2 / 3, np.logical_or(x <= 2 / 3, z <= 2 / 3)
-                            ),
-                            np.logical_and(
-                                z == 2 / 3, np.logical_or(x <= 2 / 3, y <= 2 / 3)
-                            ),
+                            # Interior boundary
+                            np.logical_and(x == 0.5, np.logical_and(y >= 0.5, z >= 0.5)),
+                            np.logical_and(y == 0.5, np.logical_and(x >= 0.5, z >= 0.5)),
+                            np.logical_and(z == 0.5, np.logical_and(x >= 0.5, y >= 0.5)),
                         )
                     )
                 )
-
             case _:
                 # Default; No perturbations on the boundary
                 pert_nodes = np.logical_not(
@@ -1125,106 +1136,6 @@ class UnitCubeGrid(pp.ModelGeometry):
         """Set meshing arguments."""
         default_mesh_arguments = {"cell_size": 0.1}
         return self.params.get("meshing_arguments", default_mesh_arguments)
-
-    def set_fractures(self) -> None:
-        """The geometry contains no fractures per se, but we set fractures for simplex
-        grids to conform to material heterogeneities. See class documentation for
-        details.
-        """
-
-        if self.params["grid_type"] == "simplex":
-
-            solution_type = self.params.get("analytical_solution")
-
-            match solution_type:
-
-                case "heterogeneous_lame":
-
-                    if self.params["grid_type"] == "simplex":
-                        self._fractures = pp.fracture_sets.orthogonal_fractures_3d(
-                            size=1
-                        )
-                    else:
-                        # No need to do anything for Cartesian grids.
-                        self._fractures = []
-
-                case "cosserat_heterogeneous":
-                    # Do we need the crossing planes that Omar claimns? I think not.
-
-                    f_1 = pp.PlaneFracture(
-                        np.array(
-                            [
-                                [1 / 3, 1 / 3, 1 / 3, 1 / 3],
-                                [0, 1 / 3, 1 / 3, 0],
-                                [0, 0, 1 / 3, 1 / 3],
-                            ]
-                        )
-                    )
-                    f_2 = pp.PlaneFracture(
-                        np.array(
-                            [
-                                [0, 1 / 3, 1 / 3, 0],
-                                [1 / 3, 1 / 3, 1 / 3, 1 / 3],
-                                [0, 0, 1 / 3, 1 / 3],
-                            ]
-                        )
-                    )
-                    f_3 = pp.PlaneFracture(
-                        np.array(
-                            [
-                                [0, 1 / 3, 1 / 3, 0],
-                                [0, 0, 1 / 3, 1 / 3],
-                                [1 / 3, 1 / 3, 1 / 3, 1 / 3],
-                            ]
-                        )
-                    )
-                    f_4 = pp.PlaneFracture(
-                        np.array(
-                            [
-                                [2 / 3, 2 / 3, 2 / 3, 2 / 3],
-                                [0, 2 / 3, 2 / 3, 0],
-                                [0, 0, 2 / 3, 2 / 3],
-                            ]
-                        )
-                    )
-                    f_5 = pp.PlaneFracture(
-                        np.array(
-                            [
-                                [0, 2 / 3, 2 / 3, 0],
-                                [2 / 3, 2 / 3, 2 / 3, 2 / 3],
-                                [0, 0, 2 / 3, 2 / 3],
-                            ]
-                        )
-                    )
-                    f_6 = pp.PlaneFracture(
-                        np.array(
-                            [
-                                [0, 2 / 3, 2 / 3, 0],
-                                [0, 0, 2 / 3, 2 / 3],
-                                [2 / 3, 2 / 3, 2 / 3, 2 / 3],
-                            ]
-                        )
-                    )
-
-                    self._fractures = [f_1, f_2, f_3, f_4, f_5, f_6]
-
-                case _:
-                    self._fractures = []
-
-        else:
-            # No need to do anything for Cartesian grids.
-            self._fractures = []
-
-    def meshing_kwargs(self) -> dict:
-        """Set meshing arguments."""
-        if self.params["grid_type"] == "simplex":
-            # Mark the fractures added as constraints (not to be represented as
-            # lower-dimensional objects).
-            constraints = np.array([i for i in range(len(self._fractures))], dtype=int)
-
-            return {"constraints": constraints}
-        else:
-            return {}
 
 
 class SourceTerms:
@@ -1609,12 +1520,18 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         for sd, data in self.mdg.subdomains(dim=self.nd, return_data=True):
             cc = self.exact_sol._cc(self.mdg.subdomains()[0])
 
-            # Cosserat parameter
-            cosserat_parameter = evaluate(self.exact_sol.cosserat_parameter_function)
-            if np.any(cosserat_parameter) > 0:
-                data[pp.PARAMETERS][self.stress_keyword][
-                    "cosserat_parameter"
-                ] = cosserat_parameter
+        # Instantiate exact solution object after materials have been set
+        self.exact_sol = ExactSolution(self)
+        if self._is_time_dependent:
+            t, *x = self.exact_sol._symbols()
+        else:
+            x = self.exact_sol._symbols()
+
+            # Set stiffness matrix
+            lame_lmbda = evaluate(self.exact_sol.lame_lmbda)
+            lame_mu = evaluate(self.exact_sol.lame_mu)
+            stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
+            data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = stiffness
 
 
 class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
@@ -1878,7 +1795,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             see linear_solve.
 
         """
-        self.linear_solver = "direct"
+        self.linear_solver = "iterative"
 
     def set_discretization_parameters(self) -> None:
         """Set parameters for the subproblems and the combined problem.
