@@ -165,7 +165,7 @@ class DataSaving(VerificationDataSaving):
 
             fi, ci, sgn = sps.find(grid.cell_faces)
             fc_cc = grid.face_centers[::, fi] - grid.cell_centers[::, ci]
-            n = grid.face_normals[::, fi] / g.face_areas[fi]
+            n = grid.face_normals[::, fi] / grid.face_areas[fi]
             dist_fc_cc = np.abs(np.sum(fc_cc * n, axis=0))
 
             def facewise_harmonic_mean(field):
@@ -1799,7 +1799,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             rotation_rows = eq_sys.assembled_equation_indices[
                 "angular_momentum_balance_equation"
             ]
-            solid_mass_rows = eq_sys.assembled_equation_indices["solid_mass_equation"]
+            solid_mass_rows = eq_sys.assembled_equation_indices["Solid_mass_equation_poromechanics"]
             fluid_mass_rows = eq_sys.assembled_equation_indices["mass_balance_equation"]
 
             A_00 = A[displacemnt_rows][:, u_dof]
