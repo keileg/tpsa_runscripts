@@ -1527,11 +1527,11 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         else:
             x = self.exact_sol._symbols()
 
-            # Set stiffness matrix
-            lame_lmbda = evaluate(self.exact_sol.lame_lmbda)
-            lame_mu = evaluate(self.exact_sol.lame_mu)
-            stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
-            data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = stiffness
+        # Set stiffness matrix
+        lame_lmbda = evaluate(self.exact_sol.lame_lmbda)
+        lame_mu = evaluate(self.exact_sol.lame_mu)
+        stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
+        data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = stiffness
 
 
 class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
