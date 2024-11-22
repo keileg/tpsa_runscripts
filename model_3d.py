@@ -1926,7 +1926,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             lame_mu = evaluate(self.exact_sol.lame_mu)
             stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
             data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = stiffness
-
+            data[pp.PARAMETERS][self.darcy_keyword]['mpfa_inverter'] = 'python'
             dim = 1 if self.nd == 2 else 3
 
             pp.set_solution_values(
@@ -1950,6 +1950,12 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
                     "cosserat_parameter"
                 ] = cosserat_parameter
 
+    def _is_time_dependent(self):
+        return False
+
+    def _is_nonlinear_problem(self) -> bool:
+        """The problem is linear."""
+        return False
 
 class EquationsMechanicsRealStokes:
     def solid_mass_equation(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
