@@ -1250,7 +1250,7 @@ class SourceTerms:
 
         return external_sources
 
-    def source_total_pressure(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
+    def source_solid_mass(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Solid pressure source."""
 
         external_sources = pp.ad.TimeDependentDenseArray(
