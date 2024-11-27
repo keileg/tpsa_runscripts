@@ -817,15 +817,18 @@ class UnitCubeGrid(pp.ModelGeometry):
                 fracs = [pp.LineFracture(np.array([[0.5, 0.5], [0.5, 1]])),
                             pp.LineFracture(np.array([[0.5, 0.5], [1, 0.5]]))
                 ]
+                constraints = np.array([0, 1])
             else:
                 fracs = []
+                constraints = np.array([], dtype=int)
                 
 
-            network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1))
+            network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1),)
             tmp_mdg = pp.create_mdg(
                 "simplex",
                 self.meshing_arguments(),
                 network,
+                constraints=constraints,
                 **self.meshing_kwargs(),
             )
             # Use the same grid refinement level in the z-direction
@@ -905,6 +908,7 @@ class UnitCubeGrid(pp.ModelGeometry):
             sd_3d.cell_centers = cc_3d
             mdg.set_boundary_grid_projections()
             self.mdg = mdg
+            pp.set_local_coordinate_projections(self.mdg)
             # Cleanup and QC is needed
 
         sd = self.mdg.subdomains()[0]
