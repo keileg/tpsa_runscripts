@@ -152,10 +152,11 @@ class DataSaving(VerificationDataSaving):
 
             if name == "rotation":
                 meas = vol / mu
-            elif name == "total_pressure":
-                meas = vol / mu
+            elif name == "total_pressure": 
                 if not has_fluid:
-                    meas += vol / lmbda
+                    meas = vol / lmbda
+                else:
+                    meas = 0
             elif name == "displacement":
                 meas = vol * mu
             elif name == "pressure":
@@ -190,8 +191,7 @@ class DataSaving(VerificationDataSaving):
             # Distance between neighboring cells
             dist_cc_cc = np.bincount(fi, weights=dist_fc_cc, minlength=grid.num_cells)
 
-            meas = surface_measure * (dist_cc_cc / grid.dim) * parameter_weight
-            meas = (dist_cc_cc / grid.dim) * parameter_weight
+            meas = (dist_cc_cc / grid.dim)# * parameter_weight
 
             debug = True
 
@@ -204,6 +204,15 @@ class DataSaving(VerificationDataSaving):
         denominator = (
             np.sqrt(np.sum(meas * np.abs(true_array) ** 2)) if relative else 1.0
         )
+
+        if name == 'total_pressure':
+            mean_val = np.mean(approx_array * vol) / np.sum(vol)
+            numerator_2 = np.sqrt(np.sum(vol * mu * np.abs(approx_array - mean_val) ** 2))
+            denominator_2 = np.sqrt(np.sum(vol * mu * np.abs(true_array) ** 2))
+
+            numerator += numerator_2
+            denominator += denominator_2
+
 
         # Deal with the case when the denominator is zero when computing the relative error.
         if np.isclose(denominator, 0) and not relative:
