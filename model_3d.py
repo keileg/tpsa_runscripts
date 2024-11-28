@@ -209,8 +209,8 @@ class DataSaving(VerificationDataSaving):
 
         if name == 'total_pressure':
             mean_val = np.mean(approx_array * vol) / np.sum(vol)
-            numerator_2 = np.sqrt(np.sum(vol * mu * np.abs(approx_array - mean_val) ** 2))
-            denominator_2 = np.sqrt(np.sum(vol * mu * np.abs(true_array) ** 2))
+            numerator_2 = np.sqrt(np.sum(vol / mu * np.abs(approx_array - mean_val) ** 2))
+            denominator_2 = np.sqrt(np.sum(vol / mu * np.abs(true_array) ** 2))
 
             numerator += numerator_2
             denominator += denominator_2
