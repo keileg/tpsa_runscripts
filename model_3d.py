@@ -185,6 +185,8 @@ class DataSaving(VerificationDataSaving):
                 parameter_weight = facewise_harmonic_mean(mu)
             elif name == "darcy_flux":
                 parameter_weight = facewise_harmonic_mean(permeability)
+            elif name == "displacement_stress":
+                pass
             else:
                 raise ValueError("Unknown field")
 
@@ -349,6 +351,24 @@ class ExactSolution:
 
         grad_rot = [[sym.diff(rot[i], var) for var in all_vars] for i in range(rot_dim)]
 
+        displacement_stress = [
+            [
+                2 * lame_mu * grad_u[0][0],
+                2 * lame_mu * grad_u[0][1],
+                2 * lame_mu * grad_u[0][2]
+            ],
+            [
+                2 * lame_mu * grad_u[1][0],
+                2 * lame_mu * grad_u[1][1],
+                2 * lame_mu * grad_u[1][2]
+            ],
+            [
+                2 * lame_mu * grad_u[2][0],
+                2 * lame_mu * grad_u[2][1],
+                2 * lame_mu * grad_u[2][2]
+            ],
+        ]
+
         # Exact elastic stress
         sigma_total = [
             [
@@ -406,6 +426,7 @@ class ExactSolution:
 
         # Secondary variables
         self.sigma_total = sigma_total  # poroelastic (total) stress
+        self._displacement_stress = displacement_stress  # Displacement stress
 
         # The 3d expression will be different
         total_rotation = [[0, -u[2], u[1]], [u[2], 0, -u[0]], [-u[1], u[0], 0]]
@@ -632,6 +653,27 @@ class ExactSolution:
         force_total_flat: np.ndarray = np.asarray(force_total_fc).ravel("F")
 
         return force_total_flat
+
+    def displacement_stress(self, sd: pp.Grid, time: float, cc=True) -> np.ndarray:
+        t, *x = self._symbols()
+        
+        fc = sd.face_centers
+        fn = sd.face_normals
+
+        stress_fun = [
+            [
+                sym.lambdify((t, *x), self._displacement_stress[i][j], "numpy")
+                for j in range(sd.dim)
+            ]
+            for i in range(self.nd)
+        ]
+        stress_total_fc = [
+            sum([stress_fun[i][j](time, *self._fc(sd)) * fn[j] for j in range(sd.dim)])
+            for i in range(self.nd)
+        ]
+        stress_total_flat = np.asarray(stress_total_fc).ravel("F")
+        return stress_total_flat
+
 
     def total_rotation(self, sd: pp.Grid, time: float) -> np.ndarray:
         """Evaluate exact poroelastic force at the face centers.
@@ -1249,6 +1291,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
         self.fields = [Field("displacement", False, True, True)]
         self.fields.append(Field("stress", False, False, True))
+        self.fields.append(Field("displacement_stress", False, False, True))
 
         if isinstance(self, SetupTpsa):
             self.fields.append(Field("total_pressure", True, True, False))
@@ -1582,6 +1625,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
         self.fields.append(Field("stress", False, False, True))
         self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
         self.fields.append(Field("darcy_flux", True, False, True))
+        self.fields.append(Field("displacement_stress", False, False, True))        
 
     def initial_condition(self):
         super().initial_condition()
@@ -1851,6 +1895,56 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
         return False
 
 
+class DisplacementStress:
+    def displacement_stress(self, domains: pp.SubdomainsOrBoundaries) -> pp.ad.Operator:
+        """Linear elastic mechanical stress [Pa].
+
+        Parameters:
+            subdomains: List of subdomains where the stress is defined.
+
+        Returns:
+            Operator for the stress.
+
+        """
+        # TODO: This is common to the standard (one-field) mechanical stress. See if we
+        # can find a way to unify.
+        if len(domains) == 0 or all(isinstance(d, pp.BoundaryGrid) for d in domains):
+            return self.create_boundary_operator(
+                name=self.stress_keyword, domains=domains  # type: ignore[call-arg]
+            )
+
+        # Check that the subdomains are grids.
+        if not all([isinstance(g, pp.Grid) for g in domains]):
+            raise ValueError(
+                """Argument subdomains a mixture of grids and boundary grids."""
+            )
+        # By now we know that subdomains is a list of grids, so we can cast it as such
+        # (in the typing sense).
+
+        for sd in domains:
+            # The mechanical stress is only defined on subdomains of co-dimension 0.
+            if sd.dim != self.nd:
+                raise ValueError("Subdomain must be of co-dimension 0.")
+
+        # No need to facilitate changing of stress discretization, only one is
+        # available at the moment.
+        discr = self.stress_discretization(domains)
+        # Fractures in the domain
+        interfaces = self.subdomains_to_interfaces(domains, [1])
+
+        # Boundary conditions on external boundaries
+        boundary_operator = self.combine_boundary_operators_mechanical_stress(domains)
+        proj = pp.ad.MortarProjections(self.mdg, domains, interfaces, dim=self.nd)
+        stress = (
+            discr.stress_displacement() @ self.displacement(domains)
+            + discr.bound_stress() @ boundary_operator
+            + discr.bound_stress()
+            @ proj.mortar_to_primary_avg
+            @ self.interface_displacement(interfaces)
+        )
+        return stress    
+
+
 class EquationsPoromechanics:
     """Combines mass and momentum balance equations."""
 
@@ -1919,6 +2013,7 @@ class SetupTpsa(  # type: ignore[misc]
     SourceTerms,
     MBSolutionStrategy,
     DataSaving,
+    DisplacementStress,
     # EquationsMechanicsRealStokes,
     # pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
     # pp.momentum_balance.VariablesThreeFieldMomentumBalance,
@@ -1940,6 +2035,7 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
     EquationsPoromechanics,
     pp.poromechanics.TpsaPoromechanicsMixin,
     DataSaving,
+    DisplacementStress,
     # EquationsPoromechanics,
     # VariablesThreeFieldPoromechanics,
     # pp.momentum_balance.ConstitutiveLawsMomentumBalance,
