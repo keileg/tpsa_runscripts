@@ -327,7 +327,7 @@ class ExactSolution:
                 ]
 
                 solid_p = (
-                    sym.sin(2 * pi * x) * sym.sin(2 * pi * y) * sym.sin(2 * pi * z)
+                    x * (1-x) * y * (1 - y) * z * (1 - z)
                 )
                 fluid_p = u[0]
 
