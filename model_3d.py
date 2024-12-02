@@ -1789,6 +1789,28 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
                 A_33, B=nullspace_fluid
             )
 
+            if True:
+                data = self.mdg.subdomain_data(sd[0])
+                C = data[pp.PARAMETERS][self.stress_keyword]['fourth_order_tensor']
+                mu = C.mu
+
+                mu_rot = np.repeat(-sd[0].cell_volumes / mu, self._rotation_dimension())
+                rotation_solver = sps.dia_matrix((1/mu_rot, 0), A_11.shape)
+
+                mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
+                total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
+                import scipy.sparse.linalg as spla
+                tps = spla.factorized(A_22)
+
+                fps = spla.factorized(A_33)
+
+            def block_preconditioner(r):
+                r_0 = r[u_dof]
+                r_1 = r[rot_dof]
+                r_2 = r[p_solid_dof]
+                x = np.zeros_like(r)
+
+
             def block_preconditioner(r):
                 r_0 = r[u_dof]
                 r_1 = r[rot_dof]
@@ -1799,6 +1821,12 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
                     x_0 = amg_elasticity.solve(r_0, tol=1e-5, accel="cg")
                     x_1 = amg_rotation.solve(r_1, tol=1e-5)
                     x_2 = amg_total_pressure.solve(r_2, tol=1e-5)
+                elif True:
+                    x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
+                    x_1 = rotation_solver @ (r_1)
+                    x_2 = tps(r_2)
+
+                    x_3 = fps(r_3)
 
                 else:
                     x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
@@ -1818,8 +1846,8 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             debug = []
 
             def print_resid(x):
-                pass
-                # print(np.linalg.norm(b - A @ x))
+                print(np.linalg.norm(b - A @ x))
+                # pass
 
             x = np.zeros_like(b)
             for _ in range(100):
