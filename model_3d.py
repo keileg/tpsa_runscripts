@@ -164,36 +164,15 @@ class DataSaving(VerificationDataSaving):
 
         else:
             assert isinstance(grid, pp.Grid)  # to please mypy
-            surface_measure = grid.face_areas
-
             fi, ci, sgn = sps.find(grid.cell_faces)
             fc_cc = grid.face_centers[::, fi] - grid.cell_centers[::, ci]
             n = grid.face_normals[::, fi] / grid.face_areas[fi]
             dist_fc_cc = np.abs(np.sum(fc_cc * n, axis=0))
 
-            def facewise_harmonic_mean(field):
-                return 1 / np.bincount(
-                    fi, weights=1 / field[ci], minlength=grid.num_faces
-                )
-
-            def arithmetic_mean(field):
-                return np.bincount(fi, weights=field[ci], minlength=grid.num_faces)
-
-            if name == "total_rotation":
-                parameter_weight = arithmetic_mean(cosserat_parameter)
-            elif name == "stress":
-                parameter_weight = facewise_harmonic_mean(mu)
-            elif name == "darcy_flux":
-                parameter_weight = facewise_harmonic_mean(permeability)
-            elif name == "displacement_stress":
-                pass
-            else:
-                raise ValueError("Unknown field")
-
             # Distance between neighboring cells
             dist_cc_cc = np.bincount(fi, weights=dist_fc_cc, minlength=grid.num_cells)
 
-            meas = (dist_cc_cc / grid.dim)# * parameter_weight
+            meas = (dist_cc_cc / grid.dim)
 
             debug = True
 
@@ -208,9 +187,10 @@ class DataSaving(VerificationDataSaving):
         )
 
         if name == 'total_pressure':
-            mean_val = np.mean(approx_array * vol) / np.sum(vol)
-            numerator_2 = np.sqrt(np.sum(vol / mu * np.abs(approx_array - mean_val) ** 2))
-            denominator_2 = np.sqrt(np.sum(vol / mu * np.abs(true_array) ** 2))
+            mean_val = np.mean((approx_array-true_array) * vol)
+            mean_val_true = np.mean(true_array * vol)
+            numerator_2 = np.sqrt(np.sum(vol / mu * (approx_array - true_array) - mean_val) ** 2)
+            denominator_2 = np.sqrt(np.sum(vol / mu * (true_array - mean_val_true) ** 2))
 
             numerator += numerator_2
             denominator += denominator_2
