@@ -1361,6 +1361,19 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             amg_rotation = pyamg.smoothed_aggregation_solver(A_11)
             amg_total_pressure = pyamg.smoothed_aggregation_solver(A_22)
 
+            if True:
+                data = self.mdg.subdomain_data(sd[0])
+                C = data[pp.PARAMETERS][self.stress_keyword]['fourth_order_tensor']
+                mu = C.mu
+
+                mu_rot = np.repeat(-sd[0].cell_volumes / mu, self._rotation_dimension())
+                rotation_solver = sps.dia_matrix((1/mu_rot, 0), A_11.shape)
+
+                mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
+                total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
+                import scipy.sparse.linalg as spla
+                tps = spla.factorized(A_22)
+
             def block_preconditioner(r):
                 r_0 = r[u_dof]
                 r_1 = r[rot_dof]
@@ -1378,12 +1391,19 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
                 else:
                     x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
-                    x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
-                    x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
+                    #x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
+                    x_1 = rotation_solver @ (r_1 - A_10 @ x_0)
+                    #x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
+                    x_2 = total_pressure_solver @ (r_2 -A_20 @ x_0)
+                    x_2 = tps(r_2 -A_20 @ x_0)
 
                 x[u_dof] = x_0
                 x[rot_dof] = x_1
                 x[p_solid_dof] = x_2
+
+                r_0_new = r_0 - A_00 @ x_0
+                r_1_new = r_1 - A_10 @ x_0 - A_11 @ x_1
+                r_2_new = r_2 - A_20 @ x_0 - A_22 @ x_2
 
                 return x
 
@@ -1392,8 +1412,8 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             debug = []
 
             def print_resid(x):
-                pass
-                # print(np.linalg.norm(b - A @ x))
+                #pass
+                print(np.linalg.norm(b - A @ x))
 
             if False:
                 x = np.zeros_like(b[p_solid_dof])
@@ -1453,7 +1473,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             x = np.zeros_like(b)
             for _ in range(100):
                 x, info = pyamg.krylov.fgmres(
-                    A, b, tol=1e-8, M=precond, callback=print_resid, x0=x, maxiter=40
+                    A, b, tol=1e-12, M=precond, callback=print_resid, x0=x, maxiter=400
                 )
                 if info == 0:
                     break
