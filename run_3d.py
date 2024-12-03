@@ -201,8 +201,8 @@ plot_elasticity = True
 run_heterogeneous = True
 plot_heterogenous = True
 
-run_poromechanics = False
-plot_poromechanics = False
+run_poromechanics = True
+plot_poromechanics = True
 
 fontsize_label = 20
 fontsize_ticks = 18
@@ -226,7 +226,7 @@ if run_elasticity:
             "grid_type": grid_types[i],
             "refinement_levels": refinement_levels,
             "cosserat_parameters": [0],
-            "lame_lambdas": [1, 1e2, 1e4, 1e6],
+            "lame_lambdas": [1, 1e2, 1e4, 1e10],
             "perturbation": perturbations[i],
             "h2_perturbation": h2_perturbations[i],
             "nd": 3,
@@ -368,7 +368,7 @@ if plot_elasticity:
 
 heterogeneous_filename_stem = "heterogeneous_3d"
 
-grid_types = ["simplex"]
+grid_types = ["cartesian"]
 grid_types = ["cartesian", "cartesian", "cartesian", "simplex"]
 perturbations = [0.0, 0.3, 0.3, 0]
 h2_perturbations = [False, False, True, False]
@@ -383,7 +383,7 @@ if run_heterogeneous:
             "refinement_levels": refinement_levels,
             "cosserat_parameters": [0],
             "lame_lambdas": [1],#, 1e2, 1e4, 1e10],
-            "heterogeneity": [1, 1e2, 1e4, 1e6],
+            "heterogeneity": [1, 1e2, 1e4],
             "perturbation": perturbations[i],
             "h2_perturbation": h2_perturbations[i],
             "nd": 3,
