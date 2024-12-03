@@ -220,8 +220,6 @@ class ExactSolution:
 
         fluid_compressibility = setup.fluid.reference_component.compressibility
 
-        cosserat_parameter_base = setup.params["cosserat_parameter"]
-
         pi = sym.pi
 
         t, x, y, z = self._symbols()
@@ -279,9 +277,14 @@ class ExactSolution:
                 ]
 
                 rot_base = [
-                    100 * x * (1 - x) * (x - 0.5) * sym.sin(2 * pi * y) * sym.sin(2 * pi * z),
-                    100 * y * (1 - y) * (y - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * z),
-                    100 * z * (1 - z) * (z - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * y),
+                    x * (1 - x) * (x - 0.5) * sym.sin(2 * pi * y) * sym.sin(2 * pi * z),
+                    y * (1 - y) * (y - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * z),
+                    z * (1 - z) * (z - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * y),
+                ]
+                rot_base = [
+                    x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
+                    x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
+                    x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
                 ]
                 rot = [
                     make_heterogeneous(rot_base[0], True),
@@ -290,7 +293,8 @@ class ExactSolution:
                 ]
                 # The solid pressure is the divergence of the displacement, hence 0
                 # (div curl = 0)
-                solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
+                solid_p = make_heterogeneous(u[0], True)
+                #solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
                 fluid_p = 0
 
             case "poromechanics":
@@ -328,8 +332,6 @@ class ExactSolution:
         # Exact gradient of the displacement
         grad_u = [[sym.diff(u[i], var) for var in all_vars] for i in range(self.nd)]
         rot_dim = len(rot)
-
-        grad_rot = [[sym.diff(rot[i], var) for var in all_vars] for i in range(rot_dim)]
 
         displacement_stress = [
             [
