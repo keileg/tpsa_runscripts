@@ -589,12 +589,12 @@ if plot_poromechanics:
                         "darcy_flux",
                         'displacement_stress',
                     ]:
-                        if key != "stress" and key != "darcy_flux":
+                        if key != "stress":
                             error += val[0]
                             ref_val += val[1]
                             errors_this_level.append(val[0])
-                        error_str += f"{val[0] / val[1]**0:.5f}, "
-                        key_list.append(key)
+                            error_str += f"{val[0] / val[1]**0:.5f}, "
+                            key_list.append(key)
                 # print(error)
                 if k == 0:
                     print(key_list)
