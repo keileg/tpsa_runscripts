@@ -1373,8 +1373,8 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
                 mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
                 total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
-                import scipy.sparse.linalg as spla
-                tps = spla.factorized(A_22)
+                #import scipy.sparse.linalg as spla
+                #tps = spla.factorized(A_22)
 
             def block_preconditioner(r):
                 r_0 = r[u_dof]
@@ -1395,9 +1395,9 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
                     x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
                     #x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
                     x_1 = rotation_solver @ (r_1 - A_10 @ x_0)
-                    #x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
-                    x_2 = total_pressure_solver @ (r_2 -A_20 @ x_0)
-                    x_2 = tps(r_2 -A_20 @ x_0)
+                    x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
+                    #x_2 = total_pressure_solver @ (r_2 -A_20 @ x_0)
+                    #x_2 = tps(r_2 -A_20 @ x_0)
 
                 x[u_dof] = x_0
                 x[rot_dof] = x_1
@@ -1475,7 +1475,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             x = np.zeros_like(b)
             for _ in range(100):
                 x, info = pyamg.krylov.fgmres(
-                    A, b, tol=1e-12, M=precond, callback=print_resid, x0=x, maxiter=400
+                    A, b, tol=1e-12, M=precond, callback=print_resid, x0=x, maxiter=100
                 )
                 if info == 0:
                     break
@@ -1802,9 +1802,9 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
                 mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
                 total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
                 import scipy.sparse.linalg as spla
-                tps = spla.factorized(A_22)
+                #tps = spla.factorized(A_22)
 
-                fps = spla.factorized(A_33)
+                #fps = spla.factorized(A_33)
 
             def block_preconditioner(r):
                 r_0 = r[u_dof]
@@ -1823,7 +1823,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
                     x_0 = amg_elasticity.solve(r_0, tol=1e-5, accel="cg")
                     x_1 = amg_rotation.solve(r_1, tol=1e-5)
                     x_2 = amg_total_pressure.solve(r_2, tol=1e-5)
-                elif True:
+                elif False:
                     x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
                     x_1 = rotation_solver @ (r_1)
                     x_2 = tps(r_2)
