@@ -33,8 +33,8 @@ def run_convergence_analysis(
 
     print(" ")
     print(f" {grid_type}")
-    if grid_type == "cartesian":
-        refinement_levels += 1
+    #if grid_type == "cartesian":
+    #    refinement_levels += 1
 
     for het in heterogeneity:
         cos_results = []
@@ -87,8 +87,8 @@ def run_poromech_convergence_analysis(
     assert len(lame_lambdas) == 1
     lambda_param = lame_lambdas[0]
 
-    if grid_type == "cartesian":
-        refinement_levels += 1
+    #    if grid_type == "cartesian":
+    #        refinement_levels += 1
 
     for cos_param in cosserat_parameters:
         cos_results = []
