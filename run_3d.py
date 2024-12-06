@@ -459,20 +459,17 @@ if plot_heterogenous:
                 cell_volumes.append(res[i][j][k]["cell_diameter"])
                 error_all_levels.append(error_this_level)
 
-            if params["lame_lambdas"][j] == 1:
-                l_val = "1"
-            else:
-                if params["lame_lambdas"][j] > 1e18:
-                    l_val = f"$\infty$"
+                if params['heterogeneity'][i] == 1:
+                    l_val = "1"
                 else:
-                    l_val = f"1e{int(np.log10(params['lame_lambdas'][j]))}"
+                    l_val = f"1e{int(np.log10(params['heterogeneity'][i]))}"
 
             tmp = ax.plot(
                 -np.log2(cell_volumes),
                 np.log2(all_errors),
-                marker=markers[j],
-                color=colors[j],
-                label=f"$\lambda$: {l_val}",
+                marker=markers[i],
+                color=colors[i],
+                label=r"$\beta$: " + l_val,
             )
             legend_handles.append(tmp[0])
 
@@ -491,7 +488,7 @@ if plot_heterogenous:
         # Also plot primary variables
         fig, ax = plt.subplots()
         legend_handles = []
-        for j in range(len(res[i])):  # Loop over lambda
+        for i in range(len(res)):  # Loop over lambda
             displacement_error = []
 
             for k in range(len(res[i][j])):
@@ -499,20 +496,17 @@ if plot_heterogenous:
                     res[i][j][k]["displacement"][0] / res[i][j][k]["displacement"][1]
                 )
 
-            if params["lame_lambdas"][j] == 1:
+            if params['heterogeneity'][i] == 1:
                 l_val = "1"
             else:
-                if params["lame_lambdas"][j] > 1e18:
-                    l_val = f"$\infty$"
-                else:
-                    l_val = f"1e{int(np.log10(params['lame_lambdas'][j]))}"
+                l_val = f"1e{int(np.log10(params['heterogeneity'][i]))}"
 
             tmp = ax.plot(
                 -np.log2(cell_volumes),
                 np.log2(displacement_error),
-                marker=markers[j],
-                color=colors[j],
-                label=f"$\lambda$: {l_val}",
+                marker=markers[i],
+                color=colors[i],
+                label=r"$\beta$ :" + l_val,
                 linestyle="-",
             )
             legend_handles.append(tmp[0])
