@@ -29,8 +29,7 @@ class Geometry:
 
         """
         # Default value of 1/2, scaled by the length unit.
-        cell_size = self.units.convert_units(0.5, "m")
-        default_meshing_args: dict[str, float] = {'cell_size_x': 1.0, 'cell_size_y': 1.0, 'cell_size_z': 0.1}
+        default_meshing_args: dict[str, float] = {'cell_size_x': 1.0/10, 'cell_size_y': 1.0/10, 'cell_size_z': self.params['cell_size_z']}
         # If meshing arguments are provided in the params, they should already be
         # scaled by the length unit.
         return self.params.get("meshing_arguments", default_meshing_args)        
@@ -40,12 +39,14 @@ class BoundaryConditions:
 
     def bc_type_mechanics(self, g: pp.Grid) -> pp.BoundaryConditionVectorial:
         bottom = self.domain_boundary_sides(g).bottom
-        bc = pp.BoundaryConditionVectorial(g, bottom, "dir")
+        top = self.domain_boundary_sides(g).top
+        dir_face = np.logical_or(bottom, top)
+        bc = pp.BoundaryConditionVectorial(g, dir_face, "dir")
         return bc
 
 
     def bc_values_displacement(
-        self, boundary_grid: pp.BoundaryGrid | pp.Grid
+        self, g: pp.BoundaryGrid | pp.Grid
     ) -> np.ndarray:
         """Displacement values for the Dirichlet boundary condition.
 
@@ -57,10 +58,14 @@ class BoundaryConditions:
             values on the provided boundary grid.
 
         """
-        if isinstance(boundary_grid, pp.BoundaryGrid):
-            return np.zeros(boundary_grid.num_cells * self.nd)
+        bottom = self.domain_boundary_sides(g).bottom
+        top = self.domain_boundary_sides(g).top
+        dir_face = np.logical_or(bottom, top)
+        dir_face = top
+        val = np.zeros((self.nd, g.num_cells))
+        val[0, dir_face] = 1
 
-        return val
+        return val.ravel('F')
 
     def bc_values_stress(
         self, boundary_grid: pp.BoundaryGrid | pp.Grid
@@ -77,7 +82,7 @@ class BoundaryConditions:
         """
         top = self.domain_boundary_sides(boundary_grid).top
         val = np.zeros((self.nd, boundary_grid.num_cells))
-        val[0, top] = 1
+        val[0, top] = 1 * boundary_grid.cell_volumes[top]
 
         return val.ravel('F')
 
@@ -297,11 +302,20 @@ class SetupTpsa(  # type: ignore[misc]
 
 
 
-model = SetupTpsa({})
-pp.run_time_dependent_model(model)
+for i in range(3):
+    nx = 10 * 2 ** i
 
-u = model.displacement(model.mdg.subdomains()).value(model.equation_system)
+    model = SetupTpsa({'cell_size_z': 1.0 / nx})
+    pp.run_time_dependent_model(model)
+
+    sd = model.mdg.subdomains()[0]
+    u = model.displacement(model.mdg.subdomains()).value(model.equation_system)
+    r = model.rotation(model.mdg.subdomains()).value(model.equation_system)
+    p = model.total_pressure(model.mdg.subdomains()).value(model.equation_system)
+
+    #print(np.linalg.norm(u[::model.nd] - sd.cell_centers[0]))
+    print(np.sqrt(np.sum(sd.cell_volumes * (u[::model.nd] - sd.cell_centers[0])**2)))
 
 
 
-debug = []
+    debug = []
