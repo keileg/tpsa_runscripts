@@ -41,6 +41,7 @@ class BoundaryConditions:
         bottom = self.domain_boundary_sides(g).bottom
         top = self.domain_boundary_sides(g).top
         dir_face = np.logical_or(bottom, top)
+        dir_face = bottom
         bc = pp.BoundaryConditionVectorial(g, dir_face, "dir")
         return bc
 
@@ -61,9 +62,9 @@ class BoundaryConditions:
         bottom = self.domain_boundary_sides(g).bottom
         top = self.domain_boundary_sides(g).top
         dir_face = np.logical_or(bottom, top)
-        dir_face = top
+        dir_face = bottom
         val = np.zeros((self.nd, g.num_cells))
-        val[0, dir_face] = 1
+        val[0, dir_face] = 0
 
         return val.ravel('F')
 
@@ -80,9 +81,15 @@ class BoundaryConditions:
             values on the provided boundary grid.
 
         """
-        top = self.domain_boundary_sides(boundary_grid).top
         val = np.zeros((self.nd, boundary_grid.num_cells))
-        val[0, top] = 1 * boundary_grid.cell_volumes[top]
+        top = self.domain_boundary_sides(boundary_grid).top
+        west = self.domain_boundary_sides(boundary_grid).west
+        east = self.domain_boundary_sides(boundary_grid).east
+        val[0, top] = 1
+        val[2, west] = -1
+        val[2, east] = 1
+
+        val *= boundary_grid.cell_volumes
 
         return val.ravel('F')
 
