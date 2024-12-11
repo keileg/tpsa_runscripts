@@ -321,7 +321,7 @@ for i in range(3):
     p = model.total_pressure(model.mdg.subdomains()).value(model.equation_system)
 
     #print(np.linalg.norm(u[::model.nd] - sd.cell_centers[0]))
-    print(np.sqrt(np.sum(sd.cell_volumes * (u[::model.nd] - sd.cell_centers[0])**2)))
+    print(np.sqrt(np.sum(sd.cell_volumes * (u[::model.nd] - sd.cell_centers[2])**2)))
 
 
 
