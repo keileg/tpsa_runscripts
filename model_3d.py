@@ -966,6 +966,9 @@ class UnitCubeGrid(pp.ModelGeometry):
         return self.params.get("meshing_arguments", default_mesh_arguments)
 
     def _circumcenter_2d(self, sd):
+
+        cn = sd.cell_nodes().tocsc()
+        ni = cn.indices.reshape((3, sd.num_cells), order="F")        
         cc = sd.cell_centers.copy()
         x = sd.nodes[0]
         y = sd.nodes[1]
