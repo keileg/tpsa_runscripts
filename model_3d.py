@@ -894,67 +894,82 @@ class UnitCubeGrid(pp.ModelGeometry):
             cc_3d[2] = z
 
             sd_3d.cell_centers = cc_3d
-            mdg.set_boundary_grid_projections()
-            self.mdg = mdg
-            pp.set_local_coordinate_projections(self.mdg)
-            # Cleanup and QC is needed
 
-        sd = self.mdg.subdomains()[0]
-        x, y, z = sd.nodes[0], sd.nodes[1], sd.nodes[2]
-        h = sd.cell_diameters(cell_wise=False, func=np.min)
-
-        pert_rate = self.params.get("perturbation", 0.0)
-        if self.params.get("h2_perturbation", False):
-            pert_rate *= np.sqrt(h)
-
-        match solution_type:
-
-            case "heterogeneous_lame":
-                pert_nodes = np.logical_not(
-                    np.logical_or.reduce(
-                        (
-                            # Exterior boundary
-                            np.isin(x, [0, 1]),
-                            np.isin(y, [0, 1]),
-                            np.isin(z, [0, 1]),
-                            # Interior boundary
-                            np.logical_and(x == 0.5, np.logical_and(y >= 0.5, z >= 0.5)),
-                            np.logical_and(y == 0.5, np.logical_and(x >= 0.5, z >= 0.5)),
-                            np.logical_and(z == 0.5, np.logical_and(x >= 0.5, y >= 0.5)),
-                        )
-                    )
+        elif self.grid_type() == "cartesian":
+            if pert_rate == 0:
+                # Create a standard 3d Cartesian grid.
+                mdg = pp.create_mdg(
+                    self.grid_type(),
+                    self.meshing_arguments(),
+                    self.fracture_network,
+                    **self.meshing_kwargs(),
                 )
-            case _:
-                # Default; No perturbations on the boundary
-                pert_nodes = np.logical_not(
-                    np.logical_or.reduce(
-                        (np.isin(x, [0, 1]), np.isin(y, [0, 1]), np.isin(z, [0, 1]))
-                    )
-                )
-        # Set the random seed
-        np.random.seed(42)
-        # Perturb the nodes
-        x[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
-        y[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
-        z[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
-
-        if pert_rate > 0:
-            # Do not recompute the geometry if not pertubed. For the extruded grids this
-            # will overwrite the above construction of the cell center
-            sd.compute_geometry()
-
-        use_circumcenter = self.params.get("use_circumcenter", False)
-
-        if (
-            use_circumcenter
-            and (isinstance(sd, pp.TetrahedralGrid))
-            and isinstance(self, SetupTpsa)
-        ):
-            if self.params["prismatic_extrusion"]:
-                pass
             else:
-                # Set the circumcenter as cell center for the tetrahedral grid
-                self._circumcenter_3d(sd)
+                # We will create a 2d Cartesian grid, perturb nodes, then extrude.
+                
+                # Fractures and constraints for the 2d grid
+                fracs, constraints = [], []
+
+                network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1),)
+                tmp_mdg = pp.create_mdg(
+                    self.grid_type(),
+                    self.meshing_arguments(),
+                    network,
+                    constraints=constraints,
+                    **self.meshing_kwargs(),
+                )                
+                sd = tmp_mdg.subdomains()[0]
+                x, y = sd.nodes[0], sd.nodes[1]
+                h = sd.cell_diameters(cell_wise=False, func=np.min)
+                if self.params.get("h2_perturbation", False):
+                    pert_rate *= np.sqrt(h)        
+                match solution_type:
+
+                    case "heterogeneous_lame":
+                        pert_nodes = np.logical_not(
+                            np.logical_or.reduce(
+                                (
+                                    # Exterior boundary
+                                    np.isin(x, [0, 1]),
+                                    np.isin(y, [0, 1]),
+                                    # Interior boundary
+                                    np.logical_and(x == 0.5, y >= 0.5),
+                                    np.logical_and(y == 0.5, x >= 0.5)
+                                )
+                            )
+                        )
+                    case _:
+                        # Default; No perturbations on the boundary
+                        pert_nodes = np.logical_not(
+                            np.logical_or.reduce(
+                                (np.isin(x, [0, 1]), np.isin(y, [0, 1]))
+                            )
+                        )
+                # Set the random seed
+                np.random.seed(42)
+                # Perturb the nodes
+                x[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
+                y[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
+                # Use the same grid refinement level in the z-direction
+                num_layers = int(np.round(1 / self.meshing_arguments()["cell_size"]))
+                z_coord = np.linspace(0, 1, num_layers + 1)
+
+                mdg, _ = pp.grid_extrusion.extrude_mdg(tmp_mdg, z=z_coord)
+                mdg.compute_geometry()
+
+        else:
+            raise ValueError("Unknown grid type")
+
+        mdg.set_boundary_grid_projections()
+        self.mdg = mdg
+        pp.set_local_coordinate_projections(self.mdg)
+
+        self.nd: int = self.mdg.dim_max()
+
+        self.set_well_network()
+
+
+
 
     def set_domain(self) -> None:
         """Set domain."""
