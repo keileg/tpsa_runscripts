@@ -839,13 +839,14 @@ class UnitCubeGrid(pp.ModelGeometry):
     """Simulation model parameters."""
 
     def set_geometry(self) -> None:
-        super().set_geometry()
+        self.set_domain()
+        self.set_fractures()
+        # Create a fracture network.
+        self.fracture_network = pp.create_fracture_network(self.fractures, self.domain)
+
 
         solution_type = self.params.get("analytical_solution")
-
-        if self.params.get("prismatic_extrusion"):
-            # Create a 2d simplex grid, extrude it
-
+        def _fracture_constraints_2d():
             if solution_type == "heterogeneous_lame":
                 fracs = [pp.LineFracture(np.array([[0.5, 0.5], [0.5, 1]])),
                             pp.LineFracture(np.array([[0.5, 0.5], [1, 0.5]]))
@@ -853,8 +854,17 @@ class UnitCubeGrid(pp.ModelGeometry):
                 constraints = np.array([0, 1])
             else:
                 fracs = []
-                constraints = np.array([], dtype=int)
-                
+                constraints = np.array([], dtype=int)            
+            return fracs, constraints
+
+        pert_rate = self.params.get("perturbation", 0.0)
+
+        if self.grid_type() == "simplex":
+        #self.params.get("prismatic_extrusion"):
+            # Create a 2d simplex grid, extrude it
+
+            # Fractures and constraints for the 2d grid
+            fracs, constraints = _fracture_constraints_2d()
 
             network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1),)
             tmp_mdg = pp.create_mdg(
@@ -874,8 +884,7 @@ class UnitCubeGrid(pp.ModelGeometry):
             # Compute cell centers in 2d grids. These will be assigned to the 3d grid
             # later on
             sd = tmp_mdg.subdomains()[0]
-            cn = sd.cell_nodes().tocsc()
-            ni = cn.indices.reshape((3, sd.num_cells), order="F")
+
 
             # Find the circumcenter of the triangles
             cc_2d = self._circumcenter_2d(sd)
@@ -1202,8 +1211,6 @@ class UnitCubeGrid(pp.ModelGeometry):
             )
         )
         assert np.linalg.norm(cc_vec_cross_normal) < 1e-10
-
-
 
 
 class SourceTerms:
