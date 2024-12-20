@@ -877,53 +877,8 @@ class UnitCubeGrid(pp.ModelGeometry):
             cn = sd.cell_nodes().tocsc()
             ni = cn.indices.reshape((3, sd.num_cells), order="F")
 
-            cc_2d = sd.cell_centers.copy()
-            x = sd.nodes[0]
-            y = sd.nodes[1]
-
-            x0 = x[ni[0]]
-            y0 = y[ni[0]]
-            x1 = x[ni[1]]
-            y1 = y[ni[1]]
-            x2 = x[ni[2]]
-            y2 = y[ni[2]]
-
-            D = 2 * (x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1))
-            assert np.all(D != 0)
-            xc = (
-                (x0**2 + y0**2) * (y1 - y2)
-                + (x1**2 + y1**2) * (y2 - y0)
-                + (x2**2 + y2**2) * (y0 - y1)
-            ) / D
-            yc = (
-                -(
-                    (x0**2 + y0**2) * (x1 - x2)
-                    + (x1**2 + y1**2) * (x2 - x0)
-                    + (x2**2 + y2**2) * (x0 - x1)
-                )
-                / D
-            )
-
-            d_01 = np.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
-            d_12 = np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
-            d_20 = np.sqrt((x2 - x0) ** 2 + (y2 - y0) ** 2)
-
-            dot_0 = (x1 - x0) * (x2 - x0) + (y1 - y0) * (y2 - y0)
-            dot_1 = (x0 - x1) * (x2 - x1) + (y0 - y1) * (y2 - y1)
-            dot_2 = (x0 - x2) * (x1 - x2) + (y0 - y2) * (y1 - y2)
-
-            angle_0 = np.arccos(dot_0 / (d_01 * d_20)) * 180 / np.pi
-            angle_1 = np.arccos(dot_1 / (d_01 * d_12)) * 180 / np.pi
-            angle_2 = np.arccos(dot_2 / (d_12 * d_20)) * 180 / np.pi
-
-            assert np.allclose(angle_0 + angle_1 + angle_2, 180)
-
-            all_sharp = np.logical_and.reduce(
-                [angle_0 < 85, angle_1 < 85, angle_2 < 85]
-            )
-
-            cc_2d[0, all_sharp] = xc[all_sharp]
-            cc_2d[1, all_sharp] = yc[all_sharp]
+            # Find the circumcenter of the triangles
+            cc_2d = self._circumcenter_2d(sd)
 
             sd_3d = mdg.subdomains()[0]
             n_3d = (
@@ -1173,6 +1128,59 @@ class UnitCubeGrid(pp.ModelGeometry):
         """Set meshing arguments."""
         default_mesh_arguments = {"cell_size": 0.1}
         return self.params.get("meshing_arguments", default_mesh_arguments)
+
+    def _circumcenter_2d(self, sd):
+        cc = sd.cell_centers.copy()
+        x = sd.nodes[0]
+        y = sd.nodes[1]
+
+        x0 = x[ni[0]]
+        y0 = y[ni[0]]
+        x1 = x[ni[1]]
+        y1 = y[ni[1]]
+        x2 = x[ni[2]]
+        y2 = y[ni[2]]
+
+        D = 2 * (x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1))
+        assert np.all(D != 0)
+        xc = (
+            (x0**2 + y0**2) * (y1 - y2)
+            + (x1**2 + y1**2) * (y2 - y0)
+            + (x2**2 + y2**2) * (y0 - y1)
+        ) / D
+        yc = (
+            -(
+                (x0**2 + y0**2) * (x1 - x2)
+                + (x1**2 + y1**2) * (x2 - x0)
+                + (x2**2 + y2**2) * (x0 - x1)
+            )
+            / D
+        )
+
+        d_01 = np.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
+        d_12 = np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+        d_20 = np.sqrt((x2 - x0) ** 2 + (y2 - y0) ** 2)
+
+        dot_0 = (x1 - x0) * (x2 - x0) + (y1 - y0) * (y2 - y0)
+        dot_1 = (x0 - x1) * (x2 - x1) + (y0 - y1) * (y2 - y1)
+        dot_2 = (x0 - x2) * (x1 - x2) + (y0 - y2) * (y1 - y2)
+
+        angle_0 = np.arccos(dot_0 / (d_01 * d_20)) * 180 / np.pi
+        angle_1 = np.arccos(dot_1 / (d_01 * d_12)) * 180 / np.pi
+        angle_2 = np.arccos(dot_2 / (d_12 * d_20)) * 180 / np.pi
+
+        assert np.allclose(angle_0 + angle_1 + angle_2, 180)
+
+        all_sharp = np.logical_and.reduce(
+            [angle_0 < 85, angle_1 < 85, angle_2 < 85]
+        )
+
+        cc[0, all_sharp] = xc[all_sharp]
+        cc[1, all_sharp] = yc[all_sharp]
+
+        return cc
+
+
 
 
 class SourceTerms:
