@@ -953,172 +953,8 @@ class UnitCubeGrid(pp.ModelGeometry):
             if self.params["prismatic_extrusion"]:
                 pass
             else:
-                from scipy.spatial import ConvexHull
-
-                cn = sd.cell_nodes().tocsc()
-                ni = cn.indices.reshape((sd.dim + 1, sd.num_cells), order="F")
-
-                x0 = x[ni[0]]
-                y0 = y[ni[0]]
-                z0 = z[ni[0]]
-                x1 = x[ni[1]]
-                y1 = y[ni[1]]
-                z1 = z[ni[1]]
-                x2 = x[ni[2]]
-                y2 = y[ni[2]]
-                z2 = z[ni[2]]
-                x3 = x[ni[3]]
-                y3 = y[ni[3]]
-                z3 = z[ni[3]]
-
-                # https://en.wikipedia.org/wiki/Tetrahedron
-                # https://rodolphe-vaillant.fr/entry/127/find-a-tetrahedron-circumcenter
-                A = np.array(
-                    [
-                        [x1 - x0, y1 - y0, z1 - z0],
-                        [x2 - x0, y2 - y0, z2 - z0],
-                        [x3 - x0, y3 - y0, z3 - z0],
-                    ]
-                )
-
-                iA = [np.linalg.inv(A[:, :, i]) for i in range(A.shape[2])]
-
-                B = 0.5 * np.array(
-                    [
-                        (x1**2 + y1**2 + z1**2) - (x0**2 + y0**2 + z0**2),
-                        (x2**2 + y2**2 + z2**2) - (x0**2 + y0**2 + z0**2),
-                        (x3**2 + y3**2 + z3**2) - (x0**2 + y0**2 + z0**2),
-                    ]
-                )
-
-                center = np.array([iA[i] @ B[:, i] for i in range(A.shape[2])])
-
-                if True:
-                    distance_node_center = []
-                    for ind in ni:
-                        dist = np.sqrt(
-                            np.sum((sd.nodes[:, ind] - center.T) ** 2, axis=0)
-                        )
-                        distance_node_center.append(dist)
-
-                    max_distance = np.max(np.abs(distance_node_center), axis=0)
-                    min_distance = np.min(np.abs(distance_node_center), axis=0)
-                    assert np.max(max_distance - min_distance) < 1e-10
-
-                ind_sets = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]
-
-                ind = ind_sets[0]
-                x[ni[ind]]
-                added_volume = np.zeros(sd.num_cells)
-
-                face_polygons = []
-                fn = np.reshape(sd.face_nodes.tocsc().indices, (sd.dim, -1), order="F")
-                face_polygons = [sd.nodes[:, fn[:, i]] for i in range(sd.num_faces)]
-
-                cf = np.reshape(
-                    sd.cell_faces.tocsc().indices, (sd.dim + 1, -1), order="F"
-                )
-
-                cell_polyhedron = [
-                    [face_polygons[fi] for fi in cf[:, ci]]
-                    for ci in range(sd.num_cells)
-                ]
-
-                xn = sd.nodes
-
-                v1 = xn[:, fn[1]] - xn[:, fn[0]]
-                v2 = xn[:, fn[2]] - xn[:, fn[0]]
-
-                face_cross = np.vstack(
-                    (
-                        v1[1] * v2[2] - v1[2] * v2[1],
-                        v1[2] * v2[0] - v1[0] * v2[2],
-                        v1[0] * v2[1] - v1[1] * v2[0],
-                    )
-                )
-
-                face_cross_area = np.linalg.norm(face_cross, axis=0)
-
-                distances_from_faces = []
-                inside_cell = []
-
-                # Turn this into a loop over the rows in cf
-                for ci in range(cf.shape[0]):
-
-                    fi = cf[ci]
-
-                    # Is the face cross vector pointing into the cell?
-                    cross_points_into_cell = np.sign(
-                        np.sum(
-                            face_cross[:, fi]
-                            * (sd.cell_centers - sd.face_centers[:, fi]),
-                            axis=0,
-                        )
-                    )
-                    # The height of the cell, measured as the distance from the current
-                    # face to the oposite node
-                    height = 6 * sd.cell_volumes / face_cross_area[fi]
-                    unit_vec = face_cross[:, fi] / face_cross_area[fi]
-                    # Distance from the plane of the current face to the computed circumcenter
-                    distances_from_faces.append(
-                        np.sum(unit_vec * (center.T - sd.face_centers[:, fi]), axis=0)
-                        / height
-                    )
-                    #
-                    inside_cell.append(
-                        np.logical_and(
-                            cross_points_into_cell == np.sign(distances_from_faces[-1]),
-                            cross_points_into_cell != 0,
-                        )
-                    )
-
-                all_inside = np.all(inside_cell, axis=0)
-                print(f"{all_inside.sum()} cells have the circumcenter inside the cell")
-                min_distance = np.min(np.abs(distances_from_faces), axis=0)
-
-                replace = np.logical_and(all_inside, min_distance > 0.05)
-                if False:
-
-                    for ci in range(sd.num_cells):
-                        inside.append(
-                            pp.geometry_property_checks.point_in_polyhedron(
-                                np.array(cell_polyhedron[0]), center[0]
-                            )[0]
-                        )
-
-                    iv = []
-
-                    for i in range(sd.num_cells):
-                        hull = ConvexHull(sd.nodes[:, ni[:, i]].T, incremental=True)
-                        init_volume = hull.volume
-                        iv.append(init_volume)
-
-                        hull.add_points([center[i]])
-
-                        added_volume[i] = (hull.volume - init_volume) / init_volume
-
-                    replace = np.where(added_volume <= 0)[0]
-
-                sd.cell_centers[:, replace] = center.T[:, replace]
-
-                print(f"Replaced {replace.sum()} out of {sd.num_cells} cell centers")
-
-                fc = sd.cell_face_as_dense()
-                # Note: fc = -1 (boundary faces) will not be found in replace
-                both_replaced = np.all(np.isin(fc, np.where(replace)[0]), axis=0)
-                xc = sd.cell_centers
-                cc_vec = xc[:, fc[0, both_replaced]] - xc[:, fc[1, both_replaced]]
-
-                normal = sd.face_normals[:, both_replaced]
-
-                cc_vec_cross_normal = np.vstack(
-                    (
-                        cc_vec[1] * normal[2] - cc_vec[2] * normal[1],
-                        cc_vec[2] * normal[0] - cc_vec[0] * normal[2],
-                        cc_vec[0] * normal[1] - cc_vec[1] * normal[0],
-                    )
-                )
-                assert np.linalg.norm(cc_vec_cross_normal) < 1e-10
+                # Set the circumcenter as cell center for the tetrahedral grid
+                self._circumcenter_3d(sd)
 
     def set_domain(self) -> None:
         """Set domain."""
@@ -1179,6 +1015,175 @@ class UnitCubeGrid(pp.ModelGeometry):
         cc[1, all_sharp] = yc[all_sharp]
 
         return cc
+
+
+    def _circumcenter_3d(self, sd):
+        from scipy.spatial import ConvexHull
+
+        cn = sd.cell_nodes().tocsc()
+        ni = cn.indices.reshape((sd.dim + 1, sd.num_cells), order="F")
+
+        x0 = x[ni[0]]
+        y0 = y[ni[0]]
+        z0 = z[ni[0]]
+        x1 = x[ni[1]]
+        y1 = y[ni[1]]
+        z1 = z[ni[1]]
+        x2 = x[ni[2]]
+        y2 = y[ni[2]]
+        z2 = z[ni[2]]
+        x3 = x[ni[3]]
+        y3 = y[ni[3]]
+        z3 = z[ni[3]]
+
+        # https://en.wikipedia.org/wiki/Tetrahedron
+        # https://rodolphe-vaillant.fr/entry/127/find-a-tetrahedron-circumcenter
+        A = np.array(
+            [
+                [x1 - x0, y1 - y0, z1 - z0],
+                [x2 - x0, y2 - y0, z2 - z0],
+                [x3 - x0, y3 - y0, z3 - z0],
+            ]
+        )
+
+        iA = [np.linalg.inv(A[:, :, i]) for i in range(A.shape[2])]
+
+        B = 0.5 * np.array(
+            [
+                (x1**2 + y1**2 + z1**2) - (x0**2 + y0**2 + z0**2),
+                (x2**2 + y2**2 + z2**2) - (x0**2 + y0**2 + z0**2),
+                (x3**2 + y3**2 + z3**2) - (x0**2 + y0**2 + z0**2),
+            ]
+        )
+
+        center = np.array([iA[i] @ B[:, i] for i in range(A.shape[2])])
+
+        if True:
+            distance_node_center = []
+            for ind in ni:
+                dist = np.sqrt(
+                    np.sum((sd.nodes[:, ind] - center.T) ** 2, axis=0)
+                )
+                distance_node_center.append(dist)
+
+            max_distance = np.max(np.abs(distance_node_center), axis=0)
+            min_distance = np.min(np.abs(distance_node_center), axis=0)
+            assert np.max(max_distance - min_distance) < 1e-10
+
+        ind_sets = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]
+
+        ind = ind_sets[0]
+        x[ni[ind]]
+        added_volume = np.zeros(sd.num_cells)
+
+        face_polygons = []
+        fn = np.reshape(sd.face_nodes.tocsc().indices, (sd.dim, -1), order="F")
+        face_polygons = [sd.nodes[:, fn[:, i]] for i in range(sd.num_faces)]
+
+        cf = np.reshape(
+            sd.cell_faces.tocsc().indices, (sd.dim + 1, -1), order="F"
+        )
+
+        cell_polyhedron = [
+            [face_polygons[fi] for fi in cf[:, ci]]
+            for ci in range(sd.num_cells)
+        ]
+
+        xn = sd.nodes
+
+        v1 = xn[:, fn[1]] - xn[:, fn[0]]
+        v2 = xn[:, fn[2]] - xn[:, fn[0]]
+
+        face_cross = np.vstack(
+            (
+                v1[1] * v2[2] - v1[2] * v2[1],
+                v1[2] * v2[0] - v1[0] * v2[2],
+                v1[0] * v2[1] - v1[1] * v2[0],
+            )
+        )
+
+        face_cross_area = np.linalg.norm(face_cross, axis=0)
+
+        distances_from_faces = []
+        inside_cell = []
+
+        # Turn this into a loop over the rows in cf
+        for ci in range(cf.shape[0]):
+
+            fi = cf[ci]
+
+            # Is the face cross vector pointing into the cell?
+            cross_points_into_cell = np.sign(
+                np.sum(
+                    face_cross[:, fi]
+                    * (sd.cell_centers - sd.face_centers[:, fi]),
+                    axis=0,
+                )
+            )
+            # The height of the cell, measured as the distance from the current
+            # face to the oposite node
+            height = 6 * sd.cell_volumes / face_cross_area[fi]
+            unit_vec = face_cross[:, fi] / face_cross_area[fi]
+            # Distance from the plane of the current face to the computed circumcenter
+            distances_from_faces.append(
+                np.sum(unit_vec * (center.T - sd.face_centers[:, fi]), axis=0)
+                / height
+            )
+            #
+            inside_cell.append(
+                np.logical_and(
+                    cross_points_into_cell == np.sign(distances_from_faces[-1]),
+                    cross_points_into_cell != 0,
+                )
+            )
+
+        all_inside = np.all(inside_cell, axis=0)
+        print(f"{all_inside.sum()} cells have the circumcenter inside the cell")
+        min_distance = np.min(np.abs(distances_from_faces), axis=0)
+
+        replace = np.logical_and(all_inside, min_distance > 0.05)
+        if False:
+
+            for ci in range(sd.num_cells):
+                inside.append(
+                    pp.geometry_property_checks.point_in_polyhedron(
+                        np.array(cell_polyhedron[0]), center[0]
+                    )[0]
+                )
+
+            iv = []
+
+            for i in range(sd.num_cells):
+                hull = ConvexHull(sd.nodes[:, ni[:, i]].T, incremental=True)
+                init_volume = hull.volume
+                iv.append(init_volume)
+
+                hull.add_points([center[i]])
+
+                added_volume[i] = (hull.volume - init_volume) / init_volume
+
+            replace = np.where(added_volume <= 0)[0]
+
+        sd.cell_centers[:, replace] = center.T[:, replace]
+
+        print(f"Replaced {replace.sum()} out of {sd.num_cells} cell centers")
+
+        fc = sd.cell_face_as_dense()
+        # Note: fc = -1 (boundary faces) will not be found in replace
+        both_replaced = np.all(np.isin(fc, np.where(replace)[0]), axis=0)
+        xc = sd.cell_centers
+        cc_vec = xc[:, fc[0, both_replaced]] - xc[:, fc[1, both_replaced]]
+
+        normal = sd.face_normals[:, both_replaced]
+
+        cc_vec_cross_normal = np.vstack(
+            (
+                cc_vec[1] * normal[2] - cc_vec[2] * normal[1],
+                cc_vec[2] * normal[0] - cc_vec[0] * normal[2],
+                cc_vec[0] * normal[1] - cc_vec[1] * normal[0],
+            )
+        )
+        assert np.linalg.norm(cc_vec_cross_normal) < 1e-10
 
 
 
