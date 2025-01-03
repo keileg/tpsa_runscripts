@@ -1289,6 +1289,30 @@ class BoundaryConditions(pp.momentum_balance.BoundaryConditionsMomentumBalance):
         super().update_all_boundary_conditions()
 
 
+class StiffnessTensor:
+
+    def stiffness_tensor(self, sd: pp.Grid) -> pp.FourthOrderTensor:
+
+        exact_sol = ExactSolution(self)
+        if self._is_time_dependent:
+            t, *x = exact_sol._symbols()
+        else:
+            x = exact_sol._symbols()
+
+        def evaluate(funct):
+            val = sym.lambdify(x, funct, "numpy")(
+                *exact_sol._cc(self.mdg.subdomains()[0])
+            )
+            if isinstance(val, (float, int)):
+                val = val * np.ones(self.mdg.subdomains()[0].num_cells)
+            return val
+
+        # Set stiffness matrix
+        lame_lmbda = evaluate(exact_sol.lame_lmbda)
+        lame_mu = evaluate(exact_sol.lame_mu)
+        stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
+        return stiffness
+
 class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
     """Solution strategy for the verification setup."""
 
@@ -1618,16 +1642,8 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
         # Instantiate exact solution object after materials have been set
         self.exact_sol = ExactSolution(self)
-        if self._is_time_dependent:
-            t, *x = self.exact_sol._symbols()
-        else:
-            x = self.exact_sol._symbols()
 
-        # Set stiffness matrix
-        lame_lmbda = evaluate(self.exact_sol.lame_lmbda)
-        lame_mu = evaluate(self.exact_sol.lame_mu)
-        stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
-        data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = stiffness
+        data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = self.stiffness_tensor(sd)
 
 
 class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
@@ -2082,6 +2098,7 @@ class SetupTpsa(  # type: ignore[misc]
     MBSolutionStrategy,
     DataSaving,
     DisplacementStress,
+    StiffnessTensor,
     # EquationsMechanicsRealStokes,
     # pp.momentum_balance.ConstitutiveLawsThreeFieldMomentumBalance,
     # pp.momentum_balance.VariablesThreeFieldMomentumBalance,
@@ -2098,6 +2115,7 @@ class SetupTpsaPoromechanics(  # type: ignore[misc]
     UnitCubeGrid,
     SourceTerms,
     BoundaryConditions,
+    StiffnessTensor,
     SolutionStrategyPoromech,
     ConstitutiveLawsPoromechanicsRunscript,
     EquationsPoromechanics,
