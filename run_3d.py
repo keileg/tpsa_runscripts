@@ -28,13 +28,12 @@ def run_convergence_analysis(
     use_circumcenter=True,
     prismatic_extrusion=False,
 ):
-
+    # Function to run the convergence analysis for elasticity (both homogeneous and
+    # with heterogeneity).
     all_results = []
 
     print(" ")
     print(f" {grid_type}")
-    #if grid_type == "cartesian":
-    #    refinement_levels += 1
 
     for het in heterogeneity:
         cos_results = []
@@ -81,14 +80,12 @@ def run_poromech_convergence_analysis(
     prismatic_extrusion=False,
     analytical_solution: str = "poromechanics",
 ):
+    # Function to run the convergence analysis for poromechanics
 
     all_results = []
     # We assume that lambda is fixed to a single value
     assert len(lame_lambdas) == 1
     lambda_param = lame_lambdas[0]
-
-    #    if grid_type == "cartesian":
-    #        refinement_levels += 1
 
     for cos_param in cosserat_parameters:
         cos_results = []
@@ -131,13 +128,14 @@ def run_poromech_convergence_analysis(
 
 
 def _add_convergence_lines(ax, fontsize, fontsize_ticks):
+    # Helper function to add convergence lines to the plot
     x_vals = ax.get_xlim()
     dx = x_vals[1] - x_vals[0]
     y_vals = ax.get_ylim()
     dy = y_vals[1] - y_vals[0]
     diff = min(dx, dy)
 
-    x_0 = x_vals[0] + 0.1 * dx
+    x_0 = x_vals[0] + 0.12 * dx
     y_0 = y_vals[0] + 0.1 * dy
     x_1 = x_0 + 0.1 * diff
     y_1 = y_0 + 0.1 * diff
@@ -145,31 +143,47 @@ def _add_convergence_lines(ax, fontsize, fontsize_ticks):
 
     ax.plot([x_0, x_1], [y_1, y_0], color="black")
     ax.plot([x_0, x_1], [y_2 + 0.1 * diff, y_0 + 0.1 * diff], color="black")
-    ax.text(x_0 - 0.05 * dx, y_1, "1", fontsize=fontsize_ticks)
-    ax.text(x_0 - 0.05 * dx, y_2 + 0.1 * diff, "2", fontsize=fontsize_ticks)
+    ax.text(x_0 - 0.05 * dx, y_1 - 0.07, "1", fontsize=fontsize_ticks)
+    ax.text(x_0 - 0.05 * dx, y_2 + 0.10 * diff, "2", fontsize=fontsize_ticks)
 
 
 def plot_and_save(ax, legend_handles, file_name, y_label):
+    # Main function for plotting convergence results
 
     ax.set_xlabel(r"log$_2$($\delta^{-1}$)", fontsize=fontsize_label)
     ax.set_ylabel(y_label, fontsize=fontsize_label)
 
     ax.tick_params(axis="both", which="major", labelsize=fontsize_ticks)
 
+    x_vals = ax.get_xlim()
+    y_vals = ax.get_ylim()
+    y_min = np.floor(y_vals[0])
+    y_max = np.ceil(y_vals[1])
+
+    # By inspection, we know that the x values are between 1 and 4.5
+    x_min = 1
+    x_max = 4.5
+    # Set the x and y limits
+    ax.set_xlim([x_min, x_max])
+    ax.set_ylim([y_min, y_max])
+
+    # Set integer ticks
     xt = matplotlib.ticker.MaxNLocator(integer=True)
     yt = matplotlib.ticker.MaxNLocator(integer=True)
     ax.xaxis.set_major_locator(xt)
     ax.yaxis.set_major_locator(yt)
 
-    x_vals = ax.get_xlim()
-    y_vals = ax.get_ylim()
 
+    # Set 4 (num_minor_bins) minor ticks between each major tick
     xtick_diff = np.diff(ax.get_xticks())[0]
     ytick_diff = np.diff(ax.get_yticks())[0]
     num_minor_bins = 4
 
     dx_bins = num_minor_bins / xtick_diff
     dy_bins = num_minor_bins / ytick_diff
+
+    x_vals = ax.get_xlim()
+    y_vals = ax.get_ylim()
 
     x_min = np.floor(x_vals[0] * dx_bins) / dx_bins
     x_max = np.ceil(x_vals[1] * dx_bins) / dx_bins
@@ -184,31 +198,38 @@ def plot_and_save(ax, legend_handles, file_name, y_label):
     ax.xaxis.set_minor_locator(xt_minor)
     ax.yaxis.set_minor_locator(yt_minor)
 
-    # _add_convergence_lines(ax, fontsize_label, fontsize_ticks)
+    _add_convergence_lines(ax, fontsize_label, fontsize_ticks)
 
     ax.grid(which="major", linewidth=1.5)
     ax.grid(which="minor", linewidth=0.75)
     if len(legend_handles) > 0:
         ax.legend(handles=legend_handles, fontsize=fontsize_legend)
+
+    border = 0.02
+    ax.plot([x_min, x_max], [y_min+border, y_min+border], linestyle="-", color="black", linewidth=1.75)
+    ax.plot([x_min, x_max], [y_max-border, y_max-border], linestyle="-", color="black", linewidth=1.75)
+    ax.plot([x_min+border/2, x_min+border/2], [y_min, y_max], linestyle="-", color="black", linewidth=1.75)
+    ax.plot([x_max-border, x_max-border], [y_min, y_max], linestyle="-", color="black", linewidth=1.75)
     # plt.draw()
     # plt.show()
+    #fig.patch.set_edgecolor("black")
     plt.savefig(f"{file_name}.png", bbox_inches="tight", pad_inches=0)
 
 
-run_elasticity = True
-plot_elasticity = True
+run_elasticity = False
+plot_elasticity = False
 
 run_heterogeneous = True
 plot_heterogenous = True
 
-run_poromechanics = True
-plot_poromechanics = True
+run_poromechanics = False
+plot_poromechanics = False
 
 fontsize_label = 20
 fontsize_ticks = 18
 fontsize_legend = 16
 
-refinement_levels = 3
+refinement_levels = 4
 
 elasticity_filename_stem = "elasticity_3d"
 
@@ -265,7 +286,7 @@ if plot_elasticity:
         i = 0  # There is only one cosserat parameter
 
         colors = ["orange", "blue", "green", "red"]
-        markers = ["o", "s", "D", "X"]
+        markers = ["o", "s", "D", "v"]
         fig, ax = plt.subplots()
         legend_handles = []
         for j in range(len(res[i])):  # Loop over lambda
@@ -308,8 +329,11 @@ if plot_elasticity:
             else:
                 if params["lame_lambdas"][j] > 1e18:
                     l_val = f"$\infty$"
+                elif params["lame_lambdas"][j] > 1e9:
+                    l_val = r"$10^{10}$"
                 else:
-                    l_val = f"1e{int(np.log10(params['lame_lambdas'][j]))}"
+                    exp = f"{int(np.log10(params['lame_lambdas'][j]))}"
+                    l_val = f"$10^{exp}$"
 
             tmp = ax.plot(
                 -np.log2(cell_volumes),
@@ -348,6 +372,8 @@ if plot_elasticity:
             else:
                 if params["lame_lambdas"][j] > 1e18:
                     l_val = f"$\infty$"
+                elif params["lame_lambdas"][j] > 1e9:
+                    l_val = r"$10^{10}$"
                 else:
                     l_val = f"1e{int(np.log10(params['lame_lambdas'][j]))}"
 
@@ -383,7 +409,7 @@ if run_heterogeneous:
             "refinement_levels": refinement_levels,
             "cosserat_parameters": [0],
             "lame_lambdas": [1],#, 1e2, 1e4, 1e10],
-            "heterogeneity": [1, 1e2, 1e4],
+            "heterogeneity": [1e-4, 1, 1e4],
             "perturbation": perturbations[i],
             "h2_perturbation": h2_perturbations[i],
             "nd": 3,
@@ -421,7 +447,7 @@ if plot_heterogenous:
         j = 0  # There is only one Lame parameter
 
         colors = ["orange", "blue", "green", "red"]
-        markers = ["o", "s", "D", "X"]
+        markers = ["o", "s", "D", "v"]
         fig, ax = plt.subplots()
         legend_handles = []
         for i in range(len(res)):  # Loop over lambda
@@ -461,8 +487,10 @@ if plot_heterogenous:
 
                 if params['heterogeneity'][i] == 1:
                     l_val = "1"
+                elif params['heterogeneity'][i] < 1e-1:
+                    l_val = r"$10^{-4}$"
                 else:
-                    l_val = f"1e{int(np.log10(params['heterogeneity'][i]))}"
+                    l_val = f"$10^{int(np.log10(params['heterogeneity'][i]))}$"
 
             tmp = ax.plot(
                 -np.log2(cell_volumes),
@@ -498,8 +526,10 @@ if plot_heterogenous:
 
             if params['heterogeneity'][i] == 1:
                 l_val = "1"
+            elif params['heterogeneity'][i] < 1e-1:
+                l_val = r"$10^{-4}$"
             else:
-                l_val = f"1e{int(np.log10(params['heterogeneity'][i]))}"
+                l_val = f"$10^{int(np.log10(params['heterogeneity'][i]))}$"
 
             tmp = ax.plot(
                 -np.log2(cell_volumes),
@@ -563,7 +593,7 @@ if plot_poromechanics:
             res, params = pickle.load(f)
 
         colors = ["orange", "blue", "green", "red"]
-        markers = ["o", "s", "D", "X"]
+        markers = ["o", "s", "D", "v"]
         to_plot = []
         fig, ax = plt.subplots()
         legend_handles = []
@@ -607,8 +637,10 @@ if plot_poromechanics:
                 l_val = "1"
             elif params["permeabilities"][j] < 1e-8:
                 l_val = "0"
+            elif params["permeabilities"][j] < 1e-3:
+                l_val = r"$10^{-4}$"
             else:
-                l_val = f"1e{int(np.log10(params['permeabilities'][j]))}"
+                l_val = r"$10^{-2}$"
 
             tmp = ax.plot(
                 -np.log2(cell_volumes),
@@ -686,58 +718,3 @@ if plot_poromechanics:
         plot_and_save(
             ax, legend_handles, "primary_variables_" + full_stem, "log$_2$($e$)"
         )
-
-
-def print_errors_individual_fields(res, fields):
-    for i in range(len(res)):
-        print(f"cosserat: {cosserat_parameters[i]}")
-        for j in range(len(res[i])):
-            print(f"lambda: {lame_lambdas[j]}")
-            print(" ".join([f for f in fields]))
-            for k in range(len(res[i][j])):
-                s = []
-                for field in fields:
-                    s.append(f"{getattr(res[i][j][k], field)} ")
-                print(s)
-            print("")
-
-
-def print_error_summed_normed(res, fields):
-    for i in range(len(res)):
-        print(f"cosserat: {cosserat_parameters[i]}")
-        for j in range(len(res[i])):
-            print(f"lambda: {lame_lambdas[j]}")
-            all_errors = []
-            cell_volumes = []
-            print("")
-            fontsize_label = 16
-            fontsize_ticks = 14
-            fig, ax = plt.subplots()
-            to_plot = []
-            for k in range(len(res[i][j])):
-                error = 0
-                for field in fields:
-                    error += getattr(res[i][j][k], field)
-                print(error)
-                all_errors.append(error)
-                cell_volumes.append(res[i][j][k].cell_diameter)
-
-                to_plot.append(-np.log2(cell_volumes), np.log2(all_errors))
-                ax.plot(-np.log2(cell_volumes), np.log2(all_errors), "-s")
-
-            ax.set_xlabel("-log(cell diameter)", fontsize=fontsize_label)
-            ax.set_ylabel("log(error)", fontsize=fontsize_label)
-            ax.tick_params(axis="both", which="major", labelsize=fontsize_ticks)
-            ax.grid()
-            ax.legend()
-            # plt.draw()
-            plt.show()
-            plt.savefig("tmp.png", bbox_inches="tight", pad_inches=0)
-            debug = []
-
-
-#                     label=f"cosserat: {cosserat_parameters[i]}",
-#                      lambda: f"{lame_lambdas[j]}")
-# plt.legend()
-# plt.yscale('log')
-# plt.show()
