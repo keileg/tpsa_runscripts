@@ -884,7 +884,9 @@ class UnitCubeGrid(pp.ModelGeometry):
             # Compute cell centers in 2d grids. These will be assigned to the 3d grid
             # later on
             sd = tmp_mdg.subdomains()[0]
-
+            if False:
+                exp = pp.Exporter(sd, "simplex_2d")
+                exp.write_vtu()
 
             # Find the circumcenter of the triangles
             cc_2d = self._circumcenter_2d(sd)
@@ -905,7 +907,7 @@ class UnitCubeGrid(pp.ModelGeometry):
             sd_3d.cell_centers = cc_3d
 
         elif self.grid_type() == "cartesian":
-            if pert_rate == 0:
+            if False: #pert_rate == 0:
                 # Create a standard 3d Cartesian grid.
                 mdg = pp.create_mdg(
                     self.grid_type(),
@@ -926,7 +928,7 @@ class UnitCubeGrid(pp.ModelGeometry):
                     network,
                     constraints=constraints,
                     **self.meshing_kwargs(),
-                )                
+                )
                 sd = tmp_mdg.subdomains()[0]
                 x, y = sd.nodes[0], sd.nodes[1]
                 h = sd.cell_diameters(cell_wise=False, func=np.min)
@@ -959,6 +961,11 @@ class UnitCubeGrid(pp.ModelGeometry):
                 # Perturb the nodes
                 x[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
                 y[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
+                if False:
+                    sd.nodes[0] = x
+                    sd.nodes[1] = y
+                    exp = pp.Exporter(sd, "unperturbed_2d")
+                    exp.write_vtu()
                 # Use the same grid refinement level in the z-direction
                 num_layers = int(np.round(1 / self.meshing_arguments()["cell_size"]))
                 z_coord = np.linspace(0, 1, num_layers + 1)
@@ -1568,12 +1575,12 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         """
         self.linear_solver = "iterative"
 
-    def initialize_data_saving(self) -> None:
+    def tmp_initialize_data_saving(self) -> None:
         # Something is wrong with numba compilation in the exporter. For now, we drop
         # this step.
         pass
 
-    def _save_data_time_step(self) -> None:
+    def tmp_save_data_time_step(self) -> None:
         """No saving of data"""
         # pass
 
@@ -1753,12 +1760,12 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             iterate_index=0,
         )
 
-    def initialize_data_saving(self) -> None:
+    def tmp_initialize_data_saving(self) -> None:
         # Something is wrong with numba compilation in the exporter. For now, we drop
         # this step.
         pass
 
-    def _save_data_time_step(self) -> None:
+    def tmp_save_data_time_step(self) -> None:
         """No saving of data"""
         # pass
 
