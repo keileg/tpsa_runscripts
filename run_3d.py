@@ -136,7 +136,7 @@ def _add_convergence_lines(ax, fontsize, fontsize_ticks):
     diff = min(dx, dy)
 
     x_0 = x_vals[0] + 0.12 * dx
-    y_0 = y_vals[0] + 0.1 * dy
+    y_0 = y_vals[0] + 0.02 * dy
     x_1 = x_0 + 0.1 * diff
     y_1 = y_0 + 0.1 * diff
     y_2 = y_0 + 0.2 * diff
@@ -203,7 +203,7 @@ def plot_and_save(ax, legend_handles, file_name, y_label):
     ax.grid(which="major", linewidth=1.5)
     ax.grid(which="minor", linewidth=0.75)
     if len(legend_handles) > 0:
-        ax.legend(handles=legend_handles, fontsize=fontsize_legend)
+        ax.legend(handles=legend_handles, fontsize=fontsize_legend, loc="upper right")
 
     border = 0.02
     ax.plot([x_min, x_max], [y_min+border, y_min+border], linestyle="-", color="black", linewidth=1.75)
@@ -217,13 +217,13 @@ def plot_and_save(ax, legend_handles, file_name, y_label):
 
 
 run_elasticity = False
-plot_elasticity = False
+plot_elasticity = True
 
-run_heterogeneous = True
+run_heterogeneous = False
 plot_heterogenous = True
 
 run_poromechanics = False
-plot_poromechanics = False
+plot_poromechanics = True
 
 fontsize_label = 20
 fontsize_ticks = 18
@@ -296,9 +296,19 @@ if plot_elasticity:
 
             error_all_levels = []
 
+            # For scaling, use the analytical solution on the finest grid.
+            ref_val = 0
+            for key, val in res[i][j][-1].items():
+                if key in [
+                    "displacement",
+                    "total_pressure",
+                    "displacement_stress",                        
+                    "rotation",
+                ]:
+                    ref_val += val[1]
+                    
             for k in range(len(res[i][j])):
                 error = 0
-                ref_val = 0
                 error_str = ""
                 key_list = []
                 error_this_level = []
@@ -312,7 +322,6 @@ if plot_elasticity:
                     ]:
                         if key != "stress":
                             error += val[0]
-                            ref_val += val[1]
                             error_this_level.append(val[0])
                         error_str += f"{val[0] / val[1]**0:.5f}, "
                         key_list.append(key)
@@ -363,8 +372,9 @@ if plot_elasticity:
             displacement_error = []
 
             for k in range(len(res[i][j])):
+                # Displacement error, scaled by reference value
                 displacement_error.append(
-                    res[i][j][k]["displacement"][0] / res[i][j][k]["displacement"][1]
+                    res[i][j][k]["displacement"][0] / res[i][j][k]["displacement"][-1]
                 )
 
             if params["lame_lambdas"][j] == 1:
@@ -457,9 +467,19 @@ if plot_heterogenous:
 
             error_all_levels = []
 
+            # For scaling, use the analytical solution on the finest grid.
+            ref_val = 0
+            for key, val in res[i][j][-1].items():
+                if key in [
+                    "displacement",
+                    "total_pressure",
+                    "displacement_stress",                        
+                    "rotation",
+                ]:
+                    ref_val += val[1]
+
             for k in range(len(res[i][j])):
                 error = 0
-                ref_val = 0
                 error_str = ""
                 key_list = []
                 error_this_level = []
@@ -473,7 +493,6 @@ if plot_heterogenous:
                     ]:
                         if key != "stress":
                             error += val[0]
-                            ref_val += val[1]
                             error_this_level.append(val[0])
                         error_str += f"{val[0] / val[1]**0:.5f}, "
                         key_list.append(key)
@@ -521,7 +540,7 @@ if plot_heterogenous:
 
             for k in range(len(res[i][j])):
                 displacement_error.append(
-                    res[i][j][k]["displacement"][0] / res[i][j][k]["displacement"][1]
+                    res[i][j][k]["displacement"][0] / res[i][j][-1]["displacement"][1]
                 )
 
             if params['heterogeneity'][i] == 1:
@@ -603,9 +622,22 @@ if plot_poromechanics:
             all_errors = []
             cell_volumes = []
             error_all_levels = []
+
+            # For scaling, use the analytical solution on the finest grid.
+            ref_val = 0
+            for key, val in res[i][j][-1].items():
+                if key in [
+                    "displacement",
+                    "total_pressure",
+                    "displacement_stress",                        
+                    "rotation",
+                    "pressure",
+                    "darcy_flux"
+                ]:
+                    ref_val += val[1]
+
             for k in range(0, len(res[i][j])):
                 error = 0
-                ref_val = 0
                 error_str = ""
                 key_list = []
                 errors_this_level = []
@@ -621,7 +653,6 @@ if plot_poromechanics:
                     ]:
                         if key != "stress":
                             error += val[0]
-                            ref_val += val[1]
                             errors_this_level.append(val[0])
                             error_str += f"{val[0] / val[1]**0:.5f}, "
                             key_list.append(key)
@@ -675,10 +706,10 @@ if plot_poromechanics:
 
             for k in range(len(res[i][j])):
                 displacement_error.append(
-                    res[i][j][k]["displacement"][0] / res[i][j][k]["displacement"][1]
+                    res[i][j][k]["displacement"][0] / res[i][j][-1]["displacement"][1]
                 )
                 pressure_error.append(
-                    res[i][j][k]["pressure"][0] / res[i][j][k]["pressure"][1]
+                    res[i][j][k]["pressure"][0] / res[i][j][-1]["pressure"][1]
                 )
 
             if j == 0:
