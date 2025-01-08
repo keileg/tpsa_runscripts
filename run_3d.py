@@ -6,7 +6,17 @@ confusing and superfluous code, not to mention misleading comments. In particula
 earlier version of this work contained a model for Cosserat elasticity, which is no
 longer included in the code. All references to Cosserat elasticity below should be
 ignored.
+
 """
+
+# The following lines are necessary to avoid conflicts between OpenMP and MKL, which
+# can cause the code to run slower than expected. If you know this is not an issue on
+# your system, you can remove these lines.
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+
 
 import model_3d
 
