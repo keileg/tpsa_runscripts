@@ -17,5 +17,8 @@ git fetch
 git switch -c tpsa tpsa_repo/tpsa_no_cosserat
 ```
 
+In addition, it may be necessary to install `PyAMG` and related packages to solve the
+linear systems resulting from the discretization. 
+
 ## How to run
 The main script is `run_3d.py`; running this will generate the convergence plots reported in Section 6 of the arXiv paper.
