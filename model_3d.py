@@ -1,3 +1,18 @@
+"""Model for the 3D poromechanics problem. Can also be used for the pure mechanics
+problem.
+
+NOTE: When running this model on large grids, the main part of the computation time is
+spent on solving the resulting linear system. Two approaches are provided:
+    1. A direct solver.
+    2. An iterative solver, based on GMRES with a block-diagonal preconditioner that is
+       in part based on PyAMG (assumed to be available).
+
+To control the linear solver, search of the line 'self.linear_solver =' (there are two
+occurrences, one each for the mechanics and poromechanical model) and set this to either
+'direct' or 'iterative'.
+
+"""
+
 from collections import namedtuple
 import sympy as sym
 from porepy.viz.data_saving_model_mixin import VerificationDataSaving
