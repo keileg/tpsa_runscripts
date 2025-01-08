@@ -1,3 +1,13 @@
+"""Script to run and plot convergence analysis for 3D problems.
+
+Disclaimer: While this script is provided as a starting point for running and plotting,
+it has not been fully cleaned up and documented and will therefore likely contain
+confusing and superfluous code, not to mention misleading comments. In particular, an
+earlier version of this work contained a model for Cosserat elasticity, which is no
+longer included in the code. All references to Cosserat elasticity below should be
+ignored.
+"""
+
 import model_3d
 
 # import solution_poromechanics
@@ -12,6 +22,22 @@ import matplotlib
 # matplotlib.use("Tkagg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+# For each of the problems considered, the boolean run_{problem} determines if the
+# convergence analysis should be run, and plot_{problem} determines if the results
+# should be plotted (assumes that the convergence analysis has been run).
+run_elasticity = True
+plot_elasticity = True
+
+run_heterogeneous = True
+plot_heterogenous = True
+
+run_poromechanics = True
+plot_poromechanics = True
+
+# Number of refinement levels for the convergence analysis.
+refinement_levels = 2
 
 
 def run_convergence_analysis(
@@ -216,28 +242,32 @@ def plot_and_save(ax, legend_handles, file_name, y_label):
     plt.savefig(f"{file_name}.png", bbox_inches="tight", pad_inches=0)
 
 
-run_elasticity = False
-plot_elasticity = True
-
-run_heterogeneous = False
-plot_heterogenous = True
-
-run_poromechanics = False
-plot_poromechanics = True
-
+# Control of plotting
 fontsize_label = 20
 fontsize_ticks = 18
 fontsize_legend = 16
 
-refinement_levels = 4
 
 elasticity_filename_stem = "elasticity_3d"
 
-grid_types = ["cartesian"]
+# To run the convergence analysis only for a subset of the grids considered, modify the
+# following lists.
+
+# Type of the base grid.
 grid_types = ["cartesian", "cartesian", "cartesian", "simplex"]
+
+# Perturbation of the grid nodes.
 perturbations = [0.0, 0.3, 0.3, 0]
+# Whether the perturbation is scaled by h^1.5 (True) or h (False). The name
+# 'h2_perturbations' reflects an earlier version of the code (where the perturbation
+# were scaled by h^2, thus really small), but has not been updated.
 h2_perturbations = [False, False, True, False]
+# Whether the circumcenter of the cell should be used as the cell center. This is a good
+# choice for simplex grids.
 circumcenter = [False, False, False, True]
+# Whether the grid should be extruded in the z-direction. With the latest version of the
+# setup, this parameter is superfluous, as the grid is always extruded, but it is kept
+# for implementational convenience.
 extrusion = [False, False, False, True]
 
 if run_elasticity:
