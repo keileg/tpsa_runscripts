@@ -46,8 +46,8 @@ plot_heterogenous = True
 run_poromechanics = True
 plot_poromechanics = True
 
-# Number of refinement levels for the convergence analysis.
-refinement_levels = 2
+# Number of grid levels for the convergence analysis.
+refinement_levels = 4
 
 
 def run_convergence_analysis(
@@ -239,7 +239,7 @@ def plot_and_save(ax, legend_handles, file_name, y_label):
     ax.grid(which="major", linewidth=1.5)
     ax.grid(which="minor", linewidth=0.75)
     if len(legend_handles) > 0:
-        ax.legend(handles=legend_handles, fontsize=fontsize_legend, loc="upper right")
+        ax.legend(handles=legend_handles, fontsize=fontsize_legend, loc="center left")
 
     border = 0.02
     ax.plot([x_min, x_max], [y_min+border, y_min+border], linestyle="-", color="black", linewidth=1.75)
