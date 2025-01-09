@@ -278,6 +278,7 @@ class ExactSolution:
                 fluid_p = 0
 
             case "heterogeneous_lame":
+                scaling = (1 + heterogeneity**-1) * ((1 - char_func) + char_func * heterogeneity)
 
                 # The displacement is the curl of pot
                 u_base = [
@@ -286,29 +287,24 @@ class ExactSolution:
                     sym.sin(2 * pi * z) * x * (1 - x) * (1 / 2 - x) * y * (1 - y) * (y - 1/2),
                 ]
                 u = [
-                    make_heterogeneous(u_base[0], True),
-                    make_heterogeneous(u_base[1], True),
-                    make_heterogeneous(u_base[2], True),
+                    u_base[0] /((1 + heterogeneity**-1) * ((1 - char_func) + heterogeneity  * char_func)),
+                    u_base[1] /((1 + heterogeneity**-1) * ((1 - char_func) + heterogeneity  * char_func)),
+                    u_base[2] /((1 + heterogeneity**-1) * ((1 - char_func) + heterogeneity  * char_func)),
                 ]
 
-                rot_base = [
-                    x * (1 - x) * (x - 0.5) * sym.sin(2 * pi * y) * sym.sin(2 * pi * z),
-                    y * (1 - y) * (y - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * z),
-                    z * (1 - z) * (z - 0.5) * sym.sin(2 * pi * x) * sym.sin(2 * pi * y),
-                ]
                 rot_base = [
                     x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
                     x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
                     x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
                 ]
                 rot = [
-                    make_heterogeneous(rot_base[0], True),
-                    make_heterogeneous(rot_base[1], True),
-                    make_heterogeneous(rot_base[2], True),
+                    rot_base[0] / scaling,
+                    rot_base[1] / scaling,
+                    rot_base[2] / scaling,
                 ]
                 # The solid pressure is the divergence of the displacement, hence 0
                 # (div curl = 0)
-                solid_p = make_heterogeneous(u[0], True)
+                solid_p = u[0] / scaling
                 #solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
                 fluid_p = 0
 
