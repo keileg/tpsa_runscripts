@@ -249,9 +249,6 @@ class ExactSolution:
             else:
                 return v * ((1 - char_func) + char_func * heterogeneity)
 
-        def cosserat_parameter_function(x1, x2):
-            return cosserat_parameter
-
         match setup.params.get("analytical_solution"):
 
             case "homogeneous":
@@ -275,10 +272,14 @@ class ExactSolution:
                 # The solid pressure is the divergence of the displacement, hence 0
                 # (div curl = 0)
                 solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
+                # Fluid pressure is set to zero, this is a pure mechanics problem.
                 fluid_p = 0
 
             case "heterogeneous_lame":
-                scaling = (1 + heterogeneity**-1) * ((1 - char_func) + char_func * heterogeneity)
+                
+                beta_scaling = (1 + heterogeneity**-1)
+                scaling = ((1 - char_func) + char_func * heterogeneity)
+
 
                 # The displacement is the curl of pot
                 u_base = [
@@ -287,9 +288,9 @@ class ExactSolution:
                     sym.sin(2 * pi * z) * x * (1 - x) * (1 / 2 - x) * y * (1 - y) * (y - 1/2),
                 ]
                 u = [
-                    u_base[0] /((1 + heterogeneity**-1) * ((1 - char_func) + heterogeneity  * char_func)),
-                    u_base[1] /((1 + heterogeneity**-1) * ((1 - char_func) + heterogeneity  * char_func)),
-                    u_base[2] /((1 + heterogeneity**-1) * ((1 - char_func) + heterogeneity  * char_func)),
+                    u_base[0] / (scaling * beta_scaling),
+                    u_base[1] / (scaling * beta_scaling),
+                    u_base[2] / (scaling * beta_scaling),
                 ]
 
                 rot_base = [
@@ -298,14 +299,14 @@ class ExactSolution:
                     x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
                 ]
                 rot = [
-                    rot_base[0] / scaling,
-                    rot_base[1] / scaling,
-                    rot_base[2] / scaling,
+                    rot_base[0] / (scaling * beta_scaling),
+                    rot_base[1] / (scaling * beta_scaling),
+                    rot_base[2] / (scaling * beta_scaling),
                 ]
-                # The solid pressure is the divergence of the displacement, hence 0
-                # (div curl = 0)
-                solid_p = u[0] / scaling
-                #solid_p = sym.diff(u[0], x) + sym.diff(u[1], y) + sym.diff(u[2], z)
+                # The solid pressure is the first component of the displacement. This
+                # has already been scaled.
+                solid_p = u[0]
+                # Fluid pressure is set to zero, this is a pure mechanics problem.
                 fluid_p = 0
 
             case "poromechanics":
