@@ -167,7 +167,7 @@ class DataSaving(VerificationDataSaving):
 
             if name == "rotation":
                 meas = vol / mu
-            elif name == "total_pressure": 
+            elif name == "total_pressure":
                 if not has_fluid:
                     meas = vol / lmbda
                 else:
@@ -187,7 +187,7 @@ class DataSaving(VerificationDataSaving):
             # Distance between neighboring cells
             dist_cc_cc = np.bincount(fi, weights=dist_fc_cc, minlength=grid.num_cells)
 
-            meas = (dist_cc_cc / grid.dim)
+            meas = dist_cc_cc / grid.dim
 
             debug = True
 
@@ -201,15 +201,18 @@ class DataSaving(VerificationDataSaving):
             np.sqrt(np.sum(meas * np.abs(true_array) ** 2)) if relative else 1.0
         )
 
-        if name == 'total_pressure':
-            mean_val = np.mean((approx_array-true_array) * vol)
+        if name == "total_pressure":
+            mean_val = np.mean((approx_array - true_array) * vol)
             mean_val_true = np.mean(true_array * vol)
-            numerator_2 = np.sqrt(np.sum(vol / mu * (approx_array - true_array) - mean_val) ** 2)
-            denominator_2 = np.sqrt(np.sum(vol / mu * (true_array - mean_val_true) ** 2))
+            numerator_2 = np.sqrt(
+                np.sum(vol / mu * (approx_array - true_array) - mean_val) ** 2
+            )
+            denominator_2 = np.sqrt(
+                np.sum(vol / mu * (true_array - mean_val_true) ** 2)
+            )
 
             numerator += numerator_2
             denominator += denominator_2
-
 
         # Deal with the case when the denominator is zero when computing the relative error.
         if np.isclose(denominator, 0) and not relative:
@@ -276,16 +279,33 @@ class ExactSolution:
                 fluid_p = 0
 
             case "heterogeneous_lame":
-                
-                beta_scaling = (1 + heterogeneity**-1)
-                scaling = ((1 - char_func) + char_func * heterogeneity)
 
+                beta_scaling = 1 + heterogeneity**-1
+                scaling = (1 - char_func) + char_func * heterogeneity
 
                 # The displacement is the curl of pot
                 u_base = [
-                    sym.sin(2 * pi * x) * y * (1 - y) * (1 / 2 - y) * z * (1 - z) * (z - 1/2),
-                    sym.sin(2 * pi * y) * x * (1 - x) * (1 / 2 - x) * z * (1 - z) * (z - 1/2),
-                    sym.sin(2 * pi * z) * x * (1 - x) * (1 / 2 - x) * y * (1 - y) * (y - 1/2),
+                    sym.sin(2 * pi * x)
+                    * y
+                    * (1 - y)
+                    * (1 / 2 - y)
+                    * z
+                    * (1 - z)
+                    * (z - 1 / 2),
+                    sym.sin(2 * pi * y)
+                    * x
+                    * (1 - x)
+                    * (1 / 2 - x)
+                    * z
+                    * (1 - z)
+                    * (z - 1 / 2),
+                    sym.sin(2 * pi * z)
+                    * x
+                    * (1 - x)
+                    * (1 / 2 - x)
+                    * y
+                    * (1 - y)
+                    * (y - 1 / 2),
                 ]
                 u = [
                     u_base[0] / (scaling * beta_scaling),
@@ -294,9 +314,33 @@ class ExactSolution:
                 ]
 
                 rot_base = [
-                    x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
-                    x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
-                    x * (1 - x) * (x - 0.5) *  y * (1 - y) * (y - 0.5) * z * (1 - z) * (z - 0.5),
+                    x
+                    * (1 - x)
+                    * (x - 0.5)
+                    * y
+                    * (1 - y)
+                    * (y - 0.5)
+                    * z
+                    * (1 - z)
+                    * (z - 0.5),
+                    x
+                    * (1 - x)
+                    * (x - 0.5)
+                    * y
+                    * (1 - y)
+                    * (y - 0.5)
+                    * z
+                    * (1 - z)
+                    * (z - 0.5),
+                    x
+                    * (1 - x)
+                    * (x - 0.5)
+                    * y
+                    * (1 - y)
+                    * (y - 0.5)
+                    * z
+                    * (1 - z)
+                    * (z - 0.5),
                 ]
                 rot = [
                     rot_base[0] / (scaling * beta_scaling),
@@ -322,9 +366,7 @@ class ExactSolution:
                     z * (1 - z) * sym.sin(pi * x) * sym.sin(pi * y),
                 ]
 
-                solid_p = (
-                    x * (1-x) * y * (1 - y) * z * (1 - z)
-                )
+                solid_p = x * (1 - x) * y * (1 - y) * z * (1 - z)
                 fluid_p = u[0]
 
             case _:
@@ -349,17 +391,17 @@ class ExactSolution:
             [
                 2 * lame_mu * grad_u[0][0],
                 2 * lame_mu * grad_u[0][1],
-                2 * lame_mu * grad_u[0][2]
+                2 * lame_mu * grad_u[0][2],
             ],
             [
                 2 * lame_mu * grad_u[1][0],
                 2 * lame_mu * grad_u[1][1],
-                2 * lame_mu * grad_u[1][2]
+                2 * lame_mu * grad_u[1][2],
             ],
             [
                 2 * lame_mu * grad_u[2][0],
                 2 * lame_mu * grad_u[2][1],
-                2 * lame_mu * grad_u[2][2]
+                2 * lame_mu * grad_u[2][2],
             ],
         ]
 
@@ -650,7 +692,7 @@ class ExactSolution:
 
     def displacement_stress(self, sd: pp.Grid, time: float, cc=True) -> np.ndarray:
         t, *x = self._symbols()
-        
+
         fc = sd.face_centers
         fn = sd.face_normals
 
@@ -667,7 +709,6 @@ class ExactSolution:
         ]
         stress_total_flat = np.asarray(stress_total_fc).ravel("F")
         return stress_total_flat
-
 
     def total_rotation(self, sd: pp.Grid, time: float) -> np.ndarray:
         """Evaluate exact poroelastic force at the face centers.
@@ -856,29 +897,33 @@ class UnitCubeGrid(pp.ModelGeometry):
         # Create a fracture network.
         self.fracture_network = pp.create_fracture_network(self.fractures, self.domain)
 
-
         solution_type = self.params.get("analytical_solution")
+
         def _fracture_constraints_2d():
             if solution_type == "heterogeneous_lame":
-                fracs = [pp.LineFracture(np.array([[0.5, 0.5], [0.5, 1]])),
-                            pp.LineFracture(np.array([[0.5, 0.5], [1, 0.5]]))
+                fracs = [
+                    pp.LineFracture(np.array([[0.5, 0.5], [0.5, 1]])),
+                    pp.LineFracture(np.array([[0.5, 0.5], [1, 0.5]])),
                 ]
                 constraints = np.array([0, 1])
             else:
                 fracs = []
-                constraints = np.array([], dtype=int)            
+                constraints = np.array([], dtype=int)
             return fracs, constraints
 
         pert_rate = self.params.get("perturbation", 0.0)
 
         if self.grid_type() == "simplex":
-        #self.params.get("prismatic_extrusion"):
+            # self.params.get("prismatic_extrusion"):
             # Create a 2d simplex grid, extrude it
 
             # Fractures and constraints for the 2d grid
             fracs, constraints = _fracture_constraints_2d()
 
-            network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1),)
+            network = pp.create_fracture_network(
+                fractures=fracs,
+                domain=nd_cube_domain(2, 1),
+            )
             tmp_mdg = pp.create_mdg(
                 "simplex",
                 self.meshing_arguments(),
@@ -919,7 +964,7 @@ class UnitCubeGrid(pp.ModelGeometry):
             sd_3d.cell_centers = cc_3d
 
         elif self.grid_type() == "cartesian":
-            if False: #pert_rate == 0:
+            if False:  # pert_rate == 0:
                 # Create a standard 3d Cartesian grid.
                 mdg = pp.create_mdg(
                     self.grid_type(),
@@ -929,11 +974,14 @@ class UnitCubeGrid(pp.ModelGeometry):
                 )
             else:
                 # We will create a 2d Cartesian grid, perturb nodes, then extrude.
-                
+
                 # Fractures and constraints for the 2d grid
                 fracs, constraints = [], []
 
-                network = pp.create_fracture_network(fractures=fracs, domain=nd_cube_domain(2, 1),)
+                network = pp.create_fracture_network(
+                    fractures=fracs,
+                    domain=nd_cube_domain(2, 1),
+                )
                 tmp_mdg = pp.create_mdg(
                     self.grid_type(),
                     self.meshing_arguments(),
@@ -945,7 +993,7 @@ class UnitCubeGrid(pp.ModelGeometry):
                 x, y = sd.nodes[0], sd.nodes[1]
                 h = sd.cell_diameters(cell_wise=False, func=np.min)
                 if self.params.get("h2_perturbation", False):
-                    pert_rate *= np.sqrt(h)        
+                    pert_rate *= np.sqrt(h)
                 match solution_type:
 
                     case "heterogeneous_lame":
@@ -957,7 +1005,7 @@ class UnitCubeGrid(pp.ModelGeometry):
                                     np.isin(y, [0, 1]),
                                     # Interior boundary
                                     np.logical_and(x == 0.5, y >= 0.5),
-                                    np.logical_and(y == 0.5, x >= 0.5)
+                                    np.logical_and(y == 0.5, x >= 0.5),
                                 )
                             )
                         )
@@ -971,8 +1019,12 @@ class UnitCubeGrid(pp.ModelGeometry):
                 # Set the random seed
                 np.random.seed(42)
                 # Perturb the nodes
-                x[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
-                y[pert_nodes] += pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
+                x[pert_nodes] += (
+                    pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
+                )
+                y[pert_nodes] += (
+                    pert_rate * h * (np.random.rand(pert_nodes.sum()) - 0.5)
+                )
                 if False:
                     sd.nodes[0] = x
                     sd.nodes[1] = y
@@ -996,9 +1048,6 @@ class UnitCubeGrid(pp.ModelGeometry):
 
         self.set_well_network()
 
-
-
-
     def set_domain(self) -> None:
         """Set domain."""
         self._domain = nd_cube_domain(3, 1.0)
@@ -1011,7 +1060,7 @@ class UnitCubeGrid(pp.ModelGeometry):
     def _circumcenter_2d(self, sd):
 
         cn = sd.cell_nodes().tocsc()
-        ni = cn.indices.reshape((3, sd.num_cells), order="F")        
+        ni = cn.indices.reshape((3, sd.num_cells), order="F")
         cc = sd.cell_centers.copy()
         x = sd.nodes[0]
         y = sd.nodes[1]
@@ -1053,15 +1102,12 @@ class UnitCubeGrid(pp.ModelGeometry):
 
         assert np.allclose(angle_0 + angle_1 + angle_2, 180)
 
-        all_sharp = np.logical_and.reduce(
-            [angle_0 < 85, angle_1 < 85, angle_2 < 85]
-        )
+        all_sharp = np.logical_and.reduce([angle_0 < 85, angle_1 < 85, angle_2 < 85])
 
         cc[0, all_sharp] = xc[all_sharp]
         cc[1, all_sharp] = yc[all_sharp]
 
         return cc
-
 
     def _circumcenter_3d(self, sd):
         from scipy.spatial import ConvexHull
@@ -1107,9 +1153,7 @@ class UnitCubeGrid(pp.ModelGeometry):
         if True:
             distance_node_center = []
             for ind in ni:
-                dist = np.sqrt(
-                    np.sum((sd.nodes[:, ind] - center.T) ** 2, axis=0)
-                )
+                dist = np.sqrt(np.sum((sd.nodes[:, ind] - center.T) ** 2, axis=0))
                 distance_node_center.append(dist)
 
             max_distance = np.max(np.abs(distance_node_center), axis=0)
@@ -1126,13 +1170,10 @@ class UnitCubeGrid(pp.ModelGeometry):
         fn = np.reshape(sd.face_nodes.tocsc().indices, (sd.dim, -1), order="F")
         face_polygons = [sd.nodes[:, fn[:, i]] for i in range(sd.num_faces)]
 
-        cf = np.reshape(
-            sd.cell_faces.tocsc().indices, (sd.dim + 1, -1), order="F"
-        )
+        cf = np.reshape(sd.cell_faces.tocsc().indices, (sd.dim + 1, -1), order="F")
 
         cell_polyhedron = [
-            [face_polygons[fi] for fi in cf[:, ci]]
-            for ci in range(sd.num_cells)
+            [face_polygons[fi] for fi in cf[:, ci]] for ci in range(sd.num_cells)
         ]
 
         xn = sd.nodes
@@ -1161,8 +1202,7 @@ class UnitCubeGrid(pp.ModelGeometry):
             # Is the face cross vector pointing into the cell?
             cross_points_into_cell = np.sign(
                 np.sum(
-                    face_cross[:, fi]
-                    * (sd.cell_centers - sd.face_centers[:, fi]),
+                    face_cross[:, fi] * (sd.cell_centers - sd.face_centers[:, fi]),
                     axis=0,
                 )
             )
@@ -1172,8 +1212,7 @@ class UnitCubeGrid(pp.ModelGeometry):
             unit_vec = face_cross[:, fi] / face_cross_area[fi]
             # Distance from the plane of the current face to the computed circumcenter
             distances_from_faces.append(
-                np.sum(unit_vec * (center.T - sd.face_centers[:, fi]), axis=0)
-                / height
+                np.sum(unit_vec * (center.T - sd.face_centers[:, fi]), axis=0) / height
             )
             #
             inside_cell.append(
@@ -1332,6 +1371,7 @@ class StiffnessTensor:
         stiffness = pp.FourthOrderTensor(lmbda=lame_lmbda, mu=lame_mu)
         return stiffness
 
+
 class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
     """Solution strategy for the verification setup."""
 
@@ -1446,16 +1486,16 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
             if True:
                 data = self.mdg.subdomain_data(sd[0])
-                C = data[pp.PARAMETERS][self.stress_keyword]['fourth_order_tensor']
+                C = data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"]
                 mu = C.mu
 
                 mu_rot = np.repeat(-sd[0].cell_volumes / mu, self._rotation_dimension())
-                rotation_solver = sps.dia_matrix((1/mu_rot, 0), A_11.shape)
+                rotation_solver = sps.dia_matrix((1 / mu_rot, 0), A_11.shape)
 
                 mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
                 total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
-                #import scipy.sparse.linalg as spla
-                #tps = spla.factorized(A_22)
+                # import scipy.sparse.linalg as spla
+                # tps = spla.factorized(A_22)
 
             def block_preconditioner(r):
                 r_0 = r[u_dof]
@@ -1474,11 +1514,11 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
                 else:
                     x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
-                    #x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
+                    # x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
                     x_1 = rotation_solver @ (r_1 - A_10 @ x_0)
                     x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
-                    #x_2 = total_pressure_solver @ (r_2 -A_20 @ x_0)
-                    #x_2 = tps(r_2 -A_20 @ x_0)
+                    # x_2 = total_pressure_solver @ (r_2 -A_20 @ x_0)
+                    # x_2 = tps(r_2 -A_20 @ x_0)
 
                 x[u_dof] = x_0
                 x[rot_dof] = x_1
@@ -1495,7 +1535,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             debug = []
 
             def print_resid(x):
-                #pass
+                # pass
                 print(np.linalg.norm(b - A @ x))
 
             if False:
@@ -1662,7 +1702,9 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         # Instantiate exact solution object after materials have been set
         self.exact_sol = ExactSolution(self)
 
-        data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = self.stiffness_tensor(sd)
+        data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"] = (
+            self.stiffness_tensor(sd)
+        )
 
 
 class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
@@ -1700,7 +1742,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
         self.fields.append(Field("stress", False, False, True))
         self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
         self.fields.append(Field("darcy_flux", True, False, True))
-        self.fields.append(Field("displacement_stress", False, False, True))        
+        self.fields.append(Field("displacement_stress", False, False, True))
 
     def initial_condition(self):
         super().initial_condition()
@@ -1751,7 +1793,7 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
             data=data,
             iterate_index=0,
         )
-        
+
         fluid_pressure_source = self.exact_sol.fluid_pressure_source(sd=sd, time=t)
         pp.set_solution_values(
             name="source_fluid_pressure",
@@ -1866,25 +1908,25 @@ class SolutionStrategyPoromech(pp.poromechanics.SolutionStrategyPoromechanics):
 
             if True:
                 data = self.mdg.subdomain_data(sd[0])
-                C = data[pp.PARAMETERS][self.stress_keyword]['fourth_order_tensor']
+                C = data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"]
                 mu = C.mu
 
                 mu_rot = np.repeat(-sd[0].cell_volumes / mu, self._rotation_dimension())
-                rotation_solver = sps.dia_matrix((1/mu_rot, 0), A_11.shape)
+                rotation_solver = sps.dia_matrix((1 / mu_rot, 0), A_11.shape)
 
                 mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
                 total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
                 import scipy.sparse.linalg as spla
-                #tps = spla.factorized(A_22)
 
-                #fps = spla.factorized(A_33)
+                # tps = spla.factorized(A_22)
+
+                # fps = spla.factorized(A_33)
 
             def block_preconditioner(r):
                 r_0 = r[u_dof]
                 r_1 = r[rot_dof]
                 r_2 = r[p_solid_dof]
                 x = np.zeros_like(r)
-
 
             def block_preconditioner(r):
                 r_0 = r[u_dof]
@@ -2045,7 +2087,7 @@ class DisplacementStress:
             @ proj.mortar_to_primary_avg
             @ self.interface_displacement(interfaces)
         )
-        return stress    
+        return stress
 
 
 class EquationsPoromechanics:
