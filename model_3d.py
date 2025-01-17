@@ -1357,7 +1357,7 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         self.fields.append(Field("displacement_stress", False, False, True))
 
         if isinstance(self, SetupTpsa):
-            self.fields.append(Field("total_pressure", True, True, False))
+            self.fields.append(Field("total_pressure", True, True, True))
             self.fields.append(Field("rotation", params["nd"] == 2, True, True))
             self.fields.append(Field("total_rotation", params["nd"] == 2, False, True))
 
