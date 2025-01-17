@@ -414,7 +414,7 @@ if plot_elasticity:
             for k in range(len(res[i][j])):
                 # Displacement error, scaled by reference value
                 displacement_error.append(
-                    res[i][j][k]["displacement"][0] / res[i][j][k]["displacement"][-1]
+                    res[i][j][k]["displacement"][0] / res[i][j][-1]["displacement"][1]
                 )
 
             if params["lame_lambdas"][j] == 1:
