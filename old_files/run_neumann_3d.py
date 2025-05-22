@@ -4,6 +4,8 @@ from collections import namedtuple
 import time
 from numba import config
 from porepy.applications.md_grids.domains import nd_cube_domain
+import scipy.sparse as sps
+import warnings
 
 config.DISABLE_JIT = True
 
@@ -18,7 +20,7 @@ class Geometry:
         Override this method to define a geometry with a different domain.
 
         """
-        self._domain = nd_cube_domain(3, self.units.convert_units(1.0, "m"))    
+        self._domain = nd_cube_domain(3, self.units.convert_units(1.0, "m"))
 
     def meshing_arguments(self) -> dict[str, float]:
         """Meshing arguments for mixed-dimensional grid generation.
@@ -28,15 +30,24 @@ class Geometry:
             :meth:`~porepy.grids.mdg_generation.create_mdg`.
 
         """
+
         # Default value of 1/2, scaled by the length unit.
-        default_meshing_args: dict[str, float] = {'cell_size_x': 1.0/10, 'cell_size_y': 1.0/10, 'cell_size_z': self.params['cell_size_z']}
+        default_meshing_args: dict[str, float] = {
+            "cell_size_x": 1.0 / 10,
+            "cell_size_y": 1.0 / 10,
+            "cell_size_z": self.params["cell_size_z"],
+        }
+        default_meshing_args: dict[str, float] = {
+            "cell_size_x": self.params["cell_size_z"],
+            "cell_size_y": self.params["cell_size_z"],
+            "cell_size_z": self.params["cell_size_z"],
+        }
         # If meshing arguments are provided in the params, they should already be
         # scaled by the length unit.
-        return self.params.get("meshing_arguments", default_meshing_args)        
+        return self.params.get("meshing_arguments", default_meshing_args)
 
 
 class BoundaryConditions:
-
     def bc_type_mechanics(self, g: pp.Grid) -> pp.BoundaryConditionVectorial:
         bottom = self.domain_boundary_sides(g).bottom
         top = self.domain_boundary_sides(g).top
@@ -45,10 +56,7 @@ class BoundaryConditions:
         bc = pp.BoundaryConditionVectorial(g, dir_face, "dir")
         return bc
 
-
-    def bc_values_displacement(
-        self, g: pp.BoundaryGrid | pp.Grid
-    ) -> np.ndarray:
+    def bc_values_displacement(self, g: pp.BoundaryGrid | pp.Grid) -> np.ndarray:
         """Displacement values for the Dirichlet boundary condition.
 
         Parameters:
@@ -66,11 +74,9 @@ class BoundaryConditions:
         val = np.zeros((self.nd, g.num_cells))
         val[0, dir_face] = 0
 
-        return val.ravel('F')
+        return val.ravel("F")
 
-    def bc_values_stress(
-        self, boundary_grid: pp.BoundaryGrid | pp.Grid
-    ) -> np.ndarray:
+    def bc_values_stress(self, boundary_grid: pp.BoundaryGrid | pp.Grid) -> np.ndarray:
         """Stress values for the Neumann boundary condition.
 
         Parameters:
@@ -91,7 +97,8 @@ class BoundaryConditions:
 
         val *= boundary_grid.cell_volumes
 
-        return val.ravel('F')
+        return val.ravel("F")
+
 
 class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
     """Solution strategy for the verification setup."""
@@ -100,10 +107,10 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         """Constructor for the class."""
         super().__init__(params)
 
-        self.exact_sol: ManuThermoPoroMechExactSolution2d
+        self.exact_sol
         """Exact solution object."""
 
-        self.results: list[ManuThermoPoroMechSaveData] = []
+        self.results = []
         """Results object that stores exact and approximated solutions and errors."""
 
         self.flux_variable: str = "darcy_flux"
@@ -206,15 +213,16 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
             if True:
                 data = self.mdg.subdomain_data(sd[0])
-                C = data[pp.PARAMETERS][self.stress_keyword]['fourth_order_tensor']
+                C = data[pp.PARAMETERS][self.stress_keyword]["fourth_order_tensor"]
                 mu = C.mu
 
                 mu_rot = np.repeat(-sd[0].cell_volumes / mu, self._rotation_dimension())
-                rotation_solver = sps.dia_matrix((1/mu_rot, 0), A_11.shape)
+                rotation_solver = sps.dia_matrix((1 / mu_rot, 0), A_11.shape)
 
                 mu = -sd[0].cell_volumes * (1 / C.mu + 1 / C.lmbda)
                 total_pressure_solver = sps.dia_matrix((1 / mu, 0), A_22.shape)
                 import scipy.sparse.linalg as spla
+
                 tps = spla.factorized(A_22)
 
             def block_preconditioner(r):
@@ -234,11 +242,11 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
 
                 else:
                     x_0 = amg_elasticity.aspreconditioner().matvec(r_0)
-                    #x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
+                    # x_1 = amg_rotation.aspreconditioner().matvec(r_1 - A_10 @ x_0)
                     x_1 = rotation_solver @ (r_1 - A_10 @ x_0)
-                    #x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
-                    x_2 = total_pressure_solver @ (r_2 -A_20 @ x_0)
-                    x_2 = tps(r_2 -A_20 @ x_0)
+                    # x_2 = amg_total_pressure.aspreconditioner().matvec(r_2 - A_20 @ x_0)
+                    x_2 = total_pressure_solver @ (r_2 - A_20 @ x_0)
+                    x_2 = tps(r_2 - A_20 @ x_0)
 
                 x[u_dof] = x_0
                 x[rot_dof] = x_1
@@ -253,9 +261,8 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
             precond = LinearOperator(A.shape, matvec=block_preconditioner)
 
             def print_resid(x):
-                #pass
+                # pass
                 print(np.linalg.norm(b - A @ x))
-
 
             t = time.time()
             x = np.zeros_like(b)
@@ -293,26 +300,22 @@ class MBSolutionStrategy(pp.momentum_balance.SolutionStrategyMomentumBalance):
         self.linear_solver = "direct"
 
 
-
-
-
 class SetupTpsa(  # type: ignore[misc]
     Geometry,
     BoundaryConditions,
     MBSolutionStrategy,
-    #DataSaving,
-    #DisplacementStress,
+    # DataSaving,
+    # DisplacementStress,
     pp.momentum_balance.TpsaMomentumBalanceMixin,
     pp.momentum_balance.MomentumBalance,
 ):
     pass
 
 
-
 for i in range(3):
-    nx = 10 * 2 ** i
+    nx = 4 * 2**i
 
-    model = SetupTpsa({'cell_size_z': 1.0 / nx})
+    model = SetupTpsa({"cell_size_z": 1.0 / nx})
     pp.run_time_dependent_model(model)
 
     sd = model.mdg.subdomains()[0]
@@ -320,9 +323,7 @@ for i in range(3):
     r = model.rotation(model.mdg.subdomains()).value(model.equation_system)
     p = model.total_pressure(model.mdg.subdomains()).value(model.equation_system)
 
-    #print(np.linalg.norm(u[::model.nd] - sd.cell_centers[0]))
-    print(np.sqrt(np.sum(sd.cell_volumes * (u[::model.nd] - sd.cell_centers[2])**2)))
-
-
+    # print(np.linalg.norm(u[::model.nd] - sd.cell_centers[0]))
+    print(np.sqrt(np.sum(sd.cell_volumes * (u[:: model.nd] - sd.cell_centers[2]) ** 2)))
 
     debug = []
